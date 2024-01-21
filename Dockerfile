@@ -48,7 +48,7 @@ RUN curl -sSL 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0xC1CF6E31E6
 RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ros-noetic-desktop-full
-RUN apt install -y python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential tmux
+RUN apt install -y python3-rosdep python3-rosinstall python3-rosinstall-generator python3-wstool build-essential tmux python-is-python3
 RUN rosdep init \
  && rosdep fix-permissions \
  && rosdep update
@@ -57,18 +57,11 @@ RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
 # Elevation mapping specific dependencies
 ENV FORCE_CUDA="1"
 
-# 1: ROS deps, 2: Plane Seg deps 3: Catkin build deps
+# 1: Opencv, Eigen, GMP, MPFR, Boost, and UT_Automata
 RUN apt install -y libopencv-dev libeigen3-dev libgmp-dev libmpfr-dev libboost-all-dev
-RUN apt-get install -y ros-noetic-pybind11-catkin \
-    ros-noetic-grid-map-core ros-noetic-grid-map-msgs ros-noetic-grid-map 
-RUN apt-get install -y ros-noetic-catkin python3-catkin-tools
+RUN apt-get install -y ros-noetic-catkin python3-catkin-tools python-pygame libgoogle-glog-dev libgflags-dev liblua5.1-0-dev libqt5websockets5-dev libqt5opengl5-dev
 
-RUN touch /root/.bashrc \
-    && echo "source /opt/ros/noetic/setup.bash" >> /root/.bashrc \
-    && echo "export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/root/ut_automata"  >> /root/.bashrc \
-    && echo "export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:~/root/cs393r_starter"  >> /root/.bashrc \
-    && echo "export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:~/root/amrl_maps"  >> /root/.bashrc \
-    && echo "export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:~/root/amrl_msgs"  >> /root/.bashrc
+RUN echo 'ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/root/ut_automata:/root/cs393r_starter:/root/amrl_maps:/root/amrl_msgs' >> ~/.bashrc
 
 # Install starter directory
 # COPY . /cs393r_starter

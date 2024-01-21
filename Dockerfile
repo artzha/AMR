@@ -63,10 +63,23 @@ RUN apt-get install -y ros-noetic-catkin python3-catkin-tools python-pygame libg
 
 RUN echo 'ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:/root/ut_automata:/root/cs393r_starter:/root/amrl_maps:/root/amrl_msgs' >> ~/.bashrc
 
+#Install Chrome
+RUN apt-get update && apt-get install -y wget gnupg2
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
+RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+RUN apt-get update && apt-get install -y google-chrome-stable
+
+# Set up the user environment
+# RUN useradd -m root
+# USER root
+# WORKDIR /home/root
+
+# Expose the port for SSH port forwarding (choose an appropriate port)
+EXPOSE 9222
+
+# Set the entrypoint to Chrome in headless mode, but don't specify the file to open yet
+# ENTRYPOINT ["google-chrome-stable", "--headless", "--no-sandbox", "--remote-debugging-port=9222"]
+
 # Install starter directory
 # COPY . /cs393r_starter
 # WORKDIR /cs393r_starter
-
-# Catkin and Torch build deps
-# RUN pip install torch==1.13.1+cu116 torchvision==0.14.1+cu116 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116 chainer
-# RUN pip install -r requirements.txt

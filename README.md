@@ -19,8 +19,9 @@ make -j
 ```
 
 # Running the code
-Then use tmux to create another window to start roscore. Then use tmux to create another window to start
-the simulator using ./bin/simulator. Finally, create another window run the web browser running `python3 -m http.server 8000`
+Then use tmux to create another window to start roscore. Use tmux to create two more windows to start
+the simulator using `./bin/simulator` and `./bin/websocket`. Finally, create another window run the web 
+browser by running `python3 -m http.server 8000`
 
 Note, you should do these three commands in the /root/ut_automata directory.
 
@@ -34,3 +35,8 @@ ssh -L YOUR_LOCAL_PORT:0.0.0.0:8000 <user>@<remote machine>
 ```
 
 Then you can connect to the simulator by going to http://localhost:YOUR_LOCAL_PORT in your browser.
+
+# Connecting to Simulator
+
+Set the robot IP address to the IP address that your docker container is running on. For robolidar, this is
+10.0.0.211. 

@@ -1,5 +1,7 @@
 # AMR
 
+.
+
 ## Setting up docker container
 
 On remote machine

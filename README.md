@@ -5,7 +5,7 @@
 On remote machine
 ```
 bash build_docker.sh
-bash run_docker.sh
+bash start_docker.sh
 ```
 
 Inside docker

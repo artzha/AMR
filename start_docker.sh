@@ -1,7 +1,7 @@
 #!/bin/bash
 USER=$(whoami)
 
-podman run -it --net=host \
+docker run -it --net=host \
     --gpus all \
     -v $(pwd)/amrl_maps:/root/amrl_maps \
     -v $(pwd)/amrl_msgs:/root/amrl_msgs \

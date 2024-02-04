@@ -1,6 +1,6 @@
 [submodule "ut_automata"]
 	path = ut_automata
-	url = https://github.com/artzha/ut_automata.git
+	url = git@github.com:artzha/ut_automata.git
 [submodule "amrl_msgs"]
 	path = amrl_msgs
 	url = https://github.com/ut-amrl/amrl_msgs.git

@@ -31,8 +31,9 @@
 #include "gflags/gflags.h"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
+#include "ros/ros.h"
+
 #include "amrl_msgs/Localization2DMsg.h"
-#include "gflags/gflags.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -41,12 +42,12 @@
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 #include "nav_msgs/Odometry.h"
-#include "ros/ros.h"
+#include "std_msgs/String.h"
+
+#include "config_reader/config_reader.h"
 #include "shared/math/math_util.h"
 #include "shared/util/timer.h"
 #include "shared/ros/ros_helpers.h"
-
-#include "std_msgs/String.h"
 
 #include "navigation.h"
 
@@ -64,6 +65,7 @@ using std::vector;
 using Eigen::Vector2f;
 
 // Create command line arguments
+DEFINE_string(nav_config, "config/navigation.lua", "Navigation config file");
 DEFINE_string(laser_topic, "scan", "Name of ROS topic for LIDAR data");
 DEFINE_string(odom_topic, "odom", "Name of ROS topic for odometry data");
 DEFINE_string(loc_topic, "localization", "Name of ROS topic for localization");
@@ -137,17 +139,44 @@ void StringCallback(const std_msgs::String& msg) {
   std::cout << msg.data << "\n";
 }
 
+void LoadConfig(navigation::NavigationParams& params) {
+  #define REAL_PARAM(x) CONFIG_DOUBLE(x, "NavigationParameters."#x);
+  REAL_PARAM(dt);
+  REAL_PARAM(max_linear_accel);
+  REAL_PARAM(max_linear_deccel);
+  REAL_PARAM(max_linear_speed);
+  REAL_PARAM(max_angular_accel);
+  REAL_PARAM(max_angular_deccel);
+  REAL_PARAM(max_angular_speed);
+  REAL_PARAM(goal_tolerance);
+
+  config_reader::ConfigReader reader({FLAGS_nav_config});
+  params.dt = CONFIG_dt;
+  params.linear_limits = navigation::MotionLimits(
+    CONFIG_max_linear_accel, CONFIG_max_linear_deccel, CONFIG_max_linear_speed
+  );
+  params.angular_limits = navigation::MotionLimits(
+    CONFIG_max_angular_accel, CONFIG_max_angular_deccel, CONFIG_max_angular_speed
+  );
+  params.goal_tolerance = CONFIG_goal_tolerance;
+}
+
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, false);
   signal(SIGINT, SignalHandler);
   // Initialize ROS.
   ros::init(argc, argv, "navigation", ros::init_options::NoSigintHandler);
   ros::NodeHandle n;
-  navigation_ = new Navigation(FLAGS_map, &n);
+
+  // Load Configurations
+  navigation::NavigationParams params;
+  LoadConfig(params);
+
+  // Construct navigation
+  navigation_ = new Navigation(FLAGS_map, params, &n);
 
   ros::Subscriber string_sub = 
       n.subscribe("string_topic", 1, &StringCallback);
-
   ros::Subscriber velocity_sub =
       n.subscribe(FLAGS_odom_topic, 1, &OdometryCallback);
   ros::Subscriber localization_sub =

@@ -18,15 +18,30 @@
 \author  Joydeep Biswas, (C) 2019
 */
 //========================================================================
+#ifndef NAVIGATION_H
+#define NAVIGATION_H
 
 #include <vector>
 
 #include "eigen3/Eigen/Dense"
 
+#include "navigation_params.h"
+#include "constant_curvature_arc.h"
 #include "vector_map/vector_map.h"
 
-#ifndef NAVIGATION_H
-#define NAVIGATION_H
+#include "amrl_msgs/AckermannCurvatureDriveMsg.h"
+#include "amrl_msgs/VisualizationMsg.h"
+
+using std::string;
+using std::vector;
+using Eigen::Vector2f;
+using Eigen::Rotation2Df;
+using amrl_msgs::AckermannCurvatureDriveMsg;
+using amrl_msgs::VisualizationMsg;
+
+using namespace math_util;
+using namespace ros_helpers;
+
 
 namespace ros {
   class NodeHandle;
@@ -47,7 +62,7 @@ class Navigation {
  public:
 
    // Constructor
-  explicit Navigation(const std::string& map_file, ros::NodeHandle* n);
+  explicit Navigation(const string& map_name, NavigationParams& params, ros::NodeHandle* n);
 
   // Used in callback from localization to update position.
   void UpdateLocation(const Eigen::Vector2f& loc, float angle);
@@ -68,6 +83,11 @@ class Navigation {
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
  private:
+
+  // Map of the environment.
+  vector_map::VectorMap map_;
+  // Navigation parameters
+  NavigationParams params_;
 
   // Whether odometry has been initialized.
   bool odom_initialized_;
@@ -98,8 +118,9 @@ class Navigation {
   Eigen::Vector2f nav_goal_loc_;
   // Navigation goal angle.
   float nav_goal_angle_;
-  // Map of the environment.
-  vector_map::VectorMap map_;
+  
+  // Straight line test
+  void StraightLineTest(float& cmd_vel, float goal_distance);
 };
 
 }  // namespace navigation

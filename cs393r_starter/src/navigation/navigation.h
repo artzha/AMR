@@ -23,28 +23,28 @@
 
 #include <vector>
 
-#include "eigen3/Eigen/Dense"
-
-#include "navigation_params.h"
-#include "constant_curvature_arc.h"
-#include "vector_map/vector_map.h"
-
+#include "ackermann_motion_primitives.h"
 #include "amrl_msgs/AckermannCurvatureDriveMsg.h"
 #include "amrl_msgs/VisualizationMsg.h"
+#include "constant_curvature_arc.h"
+#include "eigen3/Eigen/Dense"
+#include "navigation_params.h"
+#include "ros/ros.h"
+#include "ros/ros_helpers.h"
+#include "vector_map/vector_map.h"
 
-using std::string;
-using std::vector;
-using Eigen::Vector2f;
-using Eigen::Rotation2Df;
 using amrl_msgs::AckermannCurvatureDriveMsg;
 using amrl_msgs::VisualizationMsg;
+using Eigen::Rotation2Df;
+using Eigen::Vector2f;
+using std::string;
+using std::vector;
 
 using namespace math_util;
 using namespace ros_helpers;
 
-
 namespace ros {
-  class NodeHandle;
+class NodeHandle;
 }  // namespace ros
 
 namespace navigation {
@@ -60,9 +60,10 @@ struct PathOption {
 
 class Navigation {
  public:
-
-   // Constructor
-  explicit Navigation(const string& map_name, NavigationParams& params, ros::NodeHandle* n);
+  // Constructor
+  explicit Navigation(const string& map_name,
+                      NavigationParams& params,
+                      ros::NodeHandle* n);
 
   // Used in callback from localization to update position.
   void UpdateLocation(const Eigen::Vector2f& loc, float angle);
@@ -71,11 +72,13 @@ class Navigation {
   void UpdateOdometry(const Eigen::Vector2f& loc,
                       float angle,
                       const Eigen::Vector2f& vel,
-                      float ang_vel);
+                      float ang_vel,
+                      double time);
 
   // Updates based on an observed laser scan
-  void ObservePointCloud(const std::vector<Eigen::Vector2f>& cloud,
-                         double time);
+  void ObservePointCloud(const std::vector<Eigen::Vector2f>& cloud, double time);
+
+  void ForwardPredict(double time);
 
   // Main function called continously from main
   void Run();
@@ -83,11 +86,10 @@ class Navigation {
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
 
  private:
-
   // Map of the environment.
   vector_map::VectorMap map_;
   // Navigation parameters
-  NavigationParams params_;
+  navigation::NavigationParams params_;
 
   // Whether odometry has been initialized.
   bool odom_initialized_;
@@ -109,8 +111,11 @@ class Navigation {
   Eigen::Vector2f odom_start_loc_;
   // Odometry-reported robot starting angle.
   float odom_start_angle_;
+  double t_odom_;
+
   // Latest observed point cloud.
-  std::vector<Eigen::Vector2f> point_cloud_;
+  std::vector<Eigen::Vector2f> point_cloud_; // base_link frame
+  double t_point_cloud_;
 
   // Whether navigation is complete.
   bool nav_complete_;
@@ -118,9 +123,13 @@ class Navigation {
   Eigen::Vector2f nav_goal_loc_;
   // Navigation goal angle.
   float nav_goal_angle_;
-  
-  // Straight line test
-  void StraightLineTest(float& cmd_vel, float goal_distance);
+
+  // Ackermann Path Sampler object
+  motion_primitives::AckermannSampler ackermann_sampler_;
+
+  void test1DTOC();
+
+  void testSamplePaths(AckermannCurvatureDriveMsg& drive_msg);
 };
 
 }  // namespace navigation

@@ -24,5 +24,5 @@ NavigationParameters = {
     robot_width = 0.281;
     robot_wheelbase = 0.324;
     obstacle_margin = 0.05;
-    lidar_offset = 0.2;
+    lidar_offset = 0.21;
 }

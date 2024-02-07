@@ -46,6 +46,7 @@
 #include "shared/ros/ros_helpers.h"
 #include "shared/util/timer.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 
@@ -131,6 +132,10 @@ void GoToCallback(const geometry_msgs::PoseStamped& msg) {
   navigation_->SetNavGoal(loc, angle);
 }
 
+void AutonomyCallback(const std_msgs::Bool& msg) {
+  navigation_->SetAutonomy(msg.data);
+}
+
 void SignalHandler(int) {
   if (!run_) {
     printf("Force Exit.\n");
@@ -162,6 +167,7 @@ void LoadConfig(navigation::NavigationParams& params) {
   REAL_PARAM(max_curvature);
   REAL_PARAM(max_path_length);
   REAL_PARAM(max_clearance);
+  REAL_PARAM(clearance_weight);
   REAL_PARAM(goal_tolerance);
   REAL_PARAM(robot_length);
   REAL_PARAM(robot_width);
@@ -179,6 +185,7 @@ void LoadConfig(navigation::NavigationParams& params) {
   params.max_curvature = CONFIG_max_curvature;
   params.max_path_length = CONFIG_max_path_length;
   params.max_clearance = CONFIG_max_clearance;
+  params.clearance_weight = CONFIG_clearance_weight;
   params.goal_tolerance = CONFIG_goal_tolerance;
   params.robot_length = CONFIG_robot_length;
   params.robot_width = CONFIG_robot_width;
@@ -207,10 +214,12 @@ int main(int argc, char** argv) {
       n.subscribe(FLAGS_loc_topic, 1, &LocalizationCallback);
   ros::Subscriber laser_sub = n.subscribe(FLAGS_laser_topic, 1, &LaserCallback);
   ros::Subscriber goto_sub = n.subscribe("/move_base_simple/goal", 1, &GoToCallback);
+  ros::Subscriber autonomy_sub = n.subscribe("/autonomy_enabler", 1, &AutonomyCallback);
 
   RateLoop loop(20.0);
   while (run_ && ros::ok()) {
     ros::spinOnce();
+    
     navigation_->Run();
     loop.Sleep();
   }

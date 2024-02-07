@@ -206,21 +206,25 @@ void AckermannSampler::checkObstacles(std::shared_ptr<ConstantCurvatureArc> path
 }  // namespace motion_primitives
 
 namespace motion_primitives {
-void AckermannEvaluator::update() {
+void AckermannEvaluator::update(const Eigen::Vector2f& new_local_target
+) {
+  local_target_ = new_local_target;
 }
 
 std::shared_ptr<ConstantCurvatureArc> AckermannEvaluator::findBestPath(
     std::vector<std::shared_ptr<ConstantCurvatureArc>>& samples) {
-    
-    // return path that have the highest clearance
-    std::shared_ptr<ConstantCurvatureArc> best_path = samples[0];
-    float best_score = evaluatePath(best_path);
+    if (samples.empty()) return nullptr;
 
-    for (auto path : samples) {
-        float new_score = evaluatePath(path);
-        if (new_score > best_score) {
+    // return path that have the highest score
+    std::shared_ptr<ConstantCurvatureArc> best_path = nullptr;
+
+    float best_score = 0;
+    for (const auto& path : samples) {
+        const float score = evaluatePath(path);
+
+        if (best_path == nullptr || score > best_score) {
             best_path = path;
-            best_score = new_score;
+            best_score = score;
         }
     }
 
@@ -228,7 +232,15 @@ std::shared_ptr<ConstantCurvatureArc> AckermannEvaluator::findBestPath(
 }
 
 float AckermannEvaluator::evaluatePath(std::shared_ptr<ConstantCurvatureArc> path) {
-    return 10 * path->clearance() + path->arc_length();
+
+    const float dist_to_target = (local_target_ - path->getEndPoint()).norm();
+    const float arc_length = path->arc_length();
+    const float clearance = path->clearance();
+
+    const float score = nav_params_.clearance_weight * clearance +
+            nav_params_.distance_weight * dist_to_target +
+            nav_params_.arc_length_weight * arc_length;
+    return score; 
 }
 
 }  // namespace motion_primitives

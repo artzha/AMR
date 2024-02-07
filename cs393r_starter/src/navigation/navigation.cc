@@ -60,6 +60,7 @@ Navigation::Navigation(const string& map_name,
                        NavigationParams& params,
                        ros::NodeHandle* n)
     : params_(params),
+      autonomy_enabled_(false),
       odom_initialized_(false),
       localization_initialized_(false),
       robot_vel_(0, 0),
@@ -84,6 +85,15 @@ Navigation::Navigation(const string& map_name,
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
+}
+
+void Navigation::SetAutonomy(bool autonomy_enabled) {
+  autonomy_enabled_ = autonomy_enabled; 
+
+  if ( !autonomy_enabled_ and command_history_.size() > 0) {
+    printf("Clearing command history\n");
+    command_history_.clear(); // Clear command history when autonomy is disabled
+  }
 }
 
 void Navigation::UpdateLocation(const Vector2f& loc, float angle) {
@@ -215,53 +225,41 @@ void Navigation::Run() {
   visualization::ClearVisualizationMsg(global_viz_msg_);
 
   // If odometry has not been initialized, we can't do anything.
-  if (!odom_initialized_) return;
-
-  // Predict laserscan and robot's odom state
-  ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
-
-  // TODO: Do in Local Planner
-  // 1. Sample paths
-  // 2. Find best path
-
-  // TODO: Control based on the best path
-
-  // if (FLAGS_TestStraight1DTOC) {
-  //   drive_msg_.curvature = 0.0f;
-  //   // Vector2f goal_loc = {odom_start_loc_[0] + 2, odom_start_loc_[1]};
-  //   Vector2f goal_loc = odom_start_loc_ + Rotation2Df(odom_angle_) * Vector2f(2.0,
-  //   0); float remaining_distance_to_goal = (goal_loc - odom_loc_).norm();
-  //   printf("goal loc x: %0.3f y: %0.3f", goal_loc[0], goal_loc[1]);
-  //   printf("odom loc x: %0.3f y: %0.3f", odom_loc_[0], odom_loc_[1]);
-  //   printf("remaining distance to goal: %0.3f", remaining_distance_to_goal);
-  //   if (remaining_distance_to_goal > params_.goal_tolerance) {
-  //     StraightLineTest(drive_msg_.velocity, remaining_distance_to_goal);
-  //   } else {
-  //     printf("Test complete");
-  //     return; // Don't update anything once test is finished
-  //   }
-  // }
-
-  cout << "RUN" << endl;
-
-  if (FLAGS_Test1DTOC) {
-    test1DTOC();
+  if (!odom_initialized_) {
+   return; 
   }
-  if (FLAGS_TestSamplePaths) {
-    testSamplePaths(drive_msg_);
+
+  if (autonomy_enabled_) {
+    // Predict laserscan and robot's odom state
+    ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
+
+    cout << "RUN" << endl;
+
+    if (FLAGS_Test1DTOC) {
+      test1DTOC();
+    }
+    if (FLAGS_TestSamplePaths) {
+      testSamplePaths(drive_msg_);
+    }
+
+    drive_msg_.header.stamp = ros::Time::now();
+    drive_pub_.publish(drive_msg_);
+    // Queue the current command for future comparison.
+    UpdateCommandHistory(drive_msg_);
+  }
+
+  // Visualize pointcloud
+  for (auto point : fp_point_cloud_) {
+    visualization::DrawPoint(point, 32762, local_viz_msg_);
   }
 
   // Add timestamps to all messages.
   local_viz_msg_.header.stamp = ros::Time::now();
   global_viz_msg_.header.stamp = ros::Time::now();
-  drive_msg_.header.stamp = ros::Time::now();
+
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-  drive_pub_.publish(drive_msg_);
-
-  // Queue the current command for future comparison.
-  UpdateCommandHistory(drive_msg_);
 }
 
 void Navigation::test1DTOC() {
@@ -316,12 +314,12 @@ void Navigation::testSamplePaths(AckermannCurvatureDriveMsg& drive_msg) {
          odom_loc_[1],
          odom_angle_);
 
-  Vector2f local_target(3, 0);
+  Vector2f local_target(7, 0);
   auto ackermann_sampler_ = motion_primitives::AckermannSampler(params_);
   ackermann_sampler_.update(robot_vel_, robot_omega_, local_target, point_cloud_);
   auto paths = ackermann_sampler_.getSamples(50);
 
-  auto ackermann_evaluator_ = motion_primitives::AckermannEvaluator();
+  auto ackermann_evaluator_ = motion_primitives::AckermannEvaluator(params_);
   auto best_path = ackermann_evaluator_.findBestPath(paths);
   best_path->getControlOnCurve(
       params_.linear_limits, robot_vel_.norm(), params_.dt, drive_msg.velocity);
@@ -348,10 +346,7 @@ void Navigation::testSamplePaths(AckermannCurvatureDriveMsg& drive_msg) {
                                 false,
                                 local_viz_msg_);
 
-  // Visualize pointcloud
-  for (auto point : fp_point_cloud_) {
-    visualization::DrawPoint(point, 32762, local_viz_msg_);
-  }
+  
 
   return;
 }

@@ -95,8 +95,11 @@ class Navigation {
 
   // Main function called continously from main
   void Run();
+  
   // Used to set the next target pose.
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
+  // Used to set autonomy status
+  void SetAutonomy(bool autonomy_enabled);
 
  private:
   // Map of the environment.
@@ -104,6 +107,9 @@ class Navigation {
   // Navigation parameters
   navigation::NavigationParams params_;
 
+  // Autonomy
+  bool autonomy_enabled_;
+  
   bool odom_initialized_;
   bool localization_initialized_;
 
@@ -142,6 +148,8 @@ class Navigation {
 
   // Ackermann Path Sampler object
   motion_primitives::AckermannSampler ackermann_sampler_;
+
+  
 
   void test1DTOC();
 

@@ -32,12 +32,18 @@ struct NavigationParams {
   double dt;
   double system_latency;
   
+  // Parameters for the path sampler
   MotionLimits linear_limits;
   MotionLimits angular_limits;
 
   float max_curvature;
   float max_path_length;
   float max_clearance;
+
+  // weights for the path evaluator
+  float clearance_weight;
+  float arc_length_weight;
+  float distance_weight;
 
   double goal_tolerance;
 

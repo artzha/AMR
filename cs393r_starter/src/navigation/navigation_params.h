@@ -16,6 +16,7 @@ struct MotionLimits {
 struct NavigationParams {
   NavigationParams()
       : dt(0.05),
+        system_latency(0.1),
         linear_limits(1.0, 1.0, 1.0),
         angular_limits(0.5, 0.5, 0.5),
         max_curvature(1.0),
@@ -29,6 +30,8 @@ struct NavigationParams {
         lidar_offset(0.5) {}
 
   double dt;
+  double system_latency;
+  
   MotionLimits linear_limits;
   MotionLimits angular_limits;
 

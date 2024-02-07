@@ -152,6 +152,7 @@ void StringCallback(const std_msgs::String& msg) { std::cout << msg.data << "\n"
 void LoadConfig(navigation::NavigationParams& params) {
 #define REAL_PARAM(x) CONFIG_DOUBLE(x, "NavigationParameters." #x);
   REAL_PARAM(dt);
+  REAL_PARAM(system_latency);
   REAL_PARAM(max_linear_accel);
   REAL_PARAM(max_linear_deccel);
   REAL_PARAM(max_linear_speed);
@@ -170,6 +171,7 @@ void LoadConfig(navigation::NavigationParams& params) {
 
   config_reader::ConfigReader reader({FLAGS_nav_config});
   params.dt = CONFIG_dt;
+  params.system_latency = CONFIG_system_latency;
   params.linear_limits = navigation::MotionLimits(
       CONFIG_max_linear_accel, CONFIG_max_linear_deccel, CONFIG_max_linear_speed);
   params.angular_limits = navigation::MotionLimits(

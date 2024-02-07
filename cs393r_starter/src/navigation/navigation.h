@@ -21,6 +21,7 @@
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 
+#include <deque>
 #include <vector>
 
 #include "ackermann_motion_primitives.h"
@@ -58,6 +59,13 @@ struct PathOption {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
 };
 
+struct Command {
+  double time;
+  // Eigen::Vector2f velocity;
+  // float omega;
+  AckermannCurvatureDriveMsg drive_msg;
+};
+
 class Navigation {
  public:
   // Constructor
@@ -68,6 +76,8 @@ class Navigation {
   // Used in callback from localization to update position.
   void UpdateLocation(const Eigen::Vector2f& loc, float angle);
 
+  void PruneCommandQueue();
+
   // Used in callback for odometry messages to update based on odometry.
   void UpdateOdometry(const Eigen::Vector2f& loc,
                       float angle,
@@ -77,6 +87,9 @@ class Navigation {
 
   // Updates based on an observed laser scan
   void ObservePointCloud(const std::vector<Eigen::Vector2f>& cloud, double time);
+
+  // Used to predict the robot's state forward in time.
+  void UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_msg);
 
   void ForwardPredict(double time);
 
@@ -91,30 +104,33 @@ class Navigation {
   // Navigation parameters
   navigation::NavigationParams params_;
 
-  // Whether odometry has been initialized.
   bool odom_initialized_;
-  // Whether localization has been initialized.
   bool localization_initialized_;
-  // Current robot location.
-  Eigen::Vector2f robot_loc_;
-  // Current robot orientation.
-  float robot_angle_;
-  // Current robot velocity.
-  Eigen::Vector2f robot_vel_;
-  // Current robot angular speed.
-  float robot_omega_;
-  // Odometry-reported robot location.
-  Eigen::Vector2f odom_loc_;
-  // Odometry-reported robot angle.
-  float odom_angle_;
-  // Odometry-reported robot starting location.
+
+  // odom states
   Eigen::Vector2f odom_start_loc_;
-  // Odometry-reported robot starting angle.
   float odom_start_angle_;
+  Eigen::Vector2f odom_loc_;
+  float odom_angle_;
   double t_odom_;
 
+  // Current robot velocity.
+  Eigen::Vector2f robot_vel_;
+  float robot_omega_;
+
+  // localization states
+  Eigen::Vector2f robot_start_loc_;
+  float robot_start_angle_;
+  Eigen::Vector2f robot_loc_;
+  float robot_angle_;
+  double t_localization_;
+
+  // command history
+  std::deque<Command> command_history_;
+
   // Latest observed point cloud.
-  std::vector<Eigen::Vector2f> point_cloud_; // base_link frame
+  std::vector<Eigen::Vector2f> point_cloud_;  // base_link frame
+  std::vector<Eigen::Vector2f> fp_point_cloud_; // forward predicted base_link frame
   double t_point_cloud_;
 
   // Whether navigation is complete.

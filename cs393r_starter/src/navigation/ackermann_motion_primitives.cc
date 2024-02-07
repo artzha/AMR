@@ -80,7 +80,7 @@ void AckermannSampler::setPathLength(std::shared_ptr<ConstantCurvatureArc> path_
 }
 
 void AckermannSampler::checkObstacles(std::shared_ptr<ConstantCurvatureArc> path_ptr) {
-  static const bool kDebug = true;
+  static const bool kDebug = false;
 
   const float l = nav_params_.robot_length + 2 * nav_params_.obstacle_margin;
   const float w = nav_params_.robot_width + 2 * nav_params_.obstacle_margin;
@@ -214,11 +214,21 @@ std::shared_ptr<ConstantCurvatureArc> AckermannEvaluator::findBestPath(
     
     // return path that have the highest clearance
     std::shared_ptr<ConstantCurvatureArc> best_path = samples[0];
+    float best_score = evaluatePath(best_path);
+
     for (auto path : samples) {
-        if (path->clearance() > best_path->clearance()) {
+        float new_score = evaluatePath(path);
+        if (new_score > best_score) {
             best_path = path;
+            best_score = new_score;
         }
     }
+
     return best_path;
 }
+
+float AckermannEvaluator::evaluatePath(std::shared_ptr<ConstantCurvatureArc> path) {
+    return 10 * path->clearance() + path->arc_length();
+}
+
 }  // namespace motion_primitives

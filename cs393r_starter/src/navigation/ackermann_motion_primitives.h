@@ -58,6 +58,8 @@ class AckermannEvaluator {
   std::shared_ptr<ConstantCurvatureArc> findBestPath(
       std::vector<std::shared_ptr<ConstantCurvatureArc>>& samples);
 
+  float evaluatePath(std::shared_ptr<ConstantCurvatureArc> path_ptr);
+
  private:
 };
 }  // namespace motion_primitives

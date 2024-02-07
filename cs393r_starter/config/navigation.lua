@@ -1,10 +1,10 @@
 NavigationParameters = {
     dt = 0.05;
-    system_latency = 0.02;
+    system_latency = 0.2;
 
     max_linear_accel = 3.0;
     max_linear_deccel = 3.0;
-    max_linear_speed = 4.0;
+    max_linear_speed = 2.0;
 
     max_angular_accel = 1.0;
     max_angular_deccel = 1.0;
@@ -20,5 +20,5 @@ NavigationParameters = {
     robot_width = 0.281;
     robot_wheelbase = 0.324;
     obstacle_margin = 0.1;
-    lidar_offset = 0.2;
+    lidar_offset = 0.21;
 }

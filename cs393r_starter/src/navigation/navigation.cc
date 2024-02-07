@@ -148,8 +148,8 @@ void Navigation::ForwardPredict(double time) {
     const float cmd_v = cmd.drive_msg.velocity;
     const float cmd_omega = cmd.drive_msg.velocity * cmd.drive_msg.curvature;
     // Assume constant velocity and omega over the time interval
-    const float v_mid = (robot_vel_.norm() + v) / 2.0f;
-    const float omega_mid = (robot_omega_ + omega) / 2.0f;
+    const float v_mid = (robot_vel_.norm() + cmd_v) / 2.0f;
+    const float omega_mid = (robot_omega_ + cmd_omega) / 2.0f;
 
     // Forward Predict Odometry
     if (cmd.time >= t_odom_ - params_.dt) {
@@ -195,7 +195,7 @@ void Navigation::ForwardPredict(double time) {
       // Exponential map of translation part of se2 (in local frame)
       Eigen::Vector2f dloc = V * Eigen::Vector2f(ds, 0);
       // Update local_tf in local frame
-      fp_local_tf *= Eigen::Translation2f(dloc) * Eigen::Rotation2Df(dtheta);
+      fp_local_tf = fp_local_tf * Eigen::Translation2f(dloc) * Eigen::Rotation2Df(dtheta);
     }
   }
 

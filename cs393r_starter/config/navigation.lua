@@ -1,6 +1,6 @@
 NavigationParameters = {
     dt = 0.05;
-    system_latency = 0.02;
+    system_latency = 0.01;
 
     max_linear_accel = 3.0;
     max_linear_deccel = 3.0;

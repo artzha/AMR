@@ -1,6 +1,10 @@
 #include "constant_curvature_arc.h"
 
 #include "motion_primitives.h"
+#include "shared/math/math_util.h"
+
+using std::fabs;
+using math_util::Sign;
 
 namespace {
 const float kEpsilon = 1e-5;

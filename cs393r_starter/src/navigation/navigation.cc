@@ -153,6 +153,7 @@ void Navigation::UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_ms
 }
 
 void Navigation::ForwardPredict(double time) {
+  Eigen::Affine2f fp_odom_tf = Eigen::Translation2f(odom_loc_) * Eigen::Rotation2Df(odom_angle_);
   Eigen::Affine2f fp_local_tf = Eigen::Affine2f::Identity();
   for (const Command& cmd : command_history_) {
     const float cmd_v = cmd.drive_msg.velocity;
@@ -177,9 +178,13 @@ void Navigation::ForwardPredict(double time) {
       }
       // Exponential map of translation part of se2 (in local frame)
       Eigen::Vector2f dloc = V * Eigen::Vector2f(ds, 0);
+      // Update odom_tf in odom frame
+      fp_odom_tf = fp_odom_tf * Eigen::Translation2f(dloc) * Eigen::Rotation2Df(dtheta);
       // Update odom_loc_ and odom_angle_ in odom frame
-      odom_loc_ += Rotation2Df(odom_angle_) * dloc;
-      odom_angle_ = math_util::AngleMod(odom_angle_ + dtheta);
+      // odom_loc_ += Rotation2Df(odom_angle_) * dloc;
+      // odom_angle_ = math_util::AngleMod(odom_angle_ + dtheta);
+      odom_loc_ = fp_odom_tf.translation();
+      odom_angle_ = atan2(fp_odom_tf.linear()(1, 0), fp_odom_tf.linear()(0, 0));
 
       // Update robot_vel_ and robot_omega_
       robot_vel_ = Eigen::Rotation2Df(odom_angle_) * Vector2f(cmd_v, 0);
@@ -229,7 +234,7 @@ void Navigation::Run() {
    return; 
   }
 
-  if (autonomy_enabled_) {
+  if (true) {
     // Predict laserscan and robot's odom state
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
@@ -263,8 +268,9 @@ void Navigation::Run() {
 }
 
 void Navigation::test1DTOC() {
-  float c = 0.2f;
-  float r = 1 / c;
+  float c = 0;
+  // float r = 1 / c;
+  float r = 100;
   drive_msg_.curvature = c;
   float theta = M_PI_4;
   Vector2f goal_loc =

@@ -42,7 +42,7 @@ struct Particle {
 class ParticleFilter {
  public:
   // Default Constructor.
-   ParticleFilter();
+  ParticleFilter();
 
   // Observe a new laser scan.
   void ObserveLaser(const std::vector<float>& ranges,
@@ -52,8 +52,7 @@ class ParticleFilter {
                     float angle_max);
 
   // Predict particle motion based on odometry.
-  void Predict(const Eigen::Vector2f& odom_loc,
-                       const float odom_angle);
+  void Predict(const Eigen::Vector2f& odom_loc, const float odom_angle);
 
   // Initialize the robot location.
   void Initialize(const std::string& map_file,
@@ -85,10 +84,9 @@ class ParticleFilter {
                               float range_max,
                               float angle_min,
                               float angle_max,
-                              std::vector<Eigen::Vector2f>* scan);
+                              std::vector<Eigen::Vector2f>& scan);
 
  private:
-
   // List of particles being tracked.
   std::vector<Particle> particles_;
 
@@ -103,6 +101,6 @@ class ParticleFilter {
   float prev_odom_angle_;
   bool odom_initialized_;
 };
-}  // namespace slam
+}  // namespace particle_filter
 
-#endif   // SRC_PARTICLE_FILTER_H_
+#endif  // SRC_PARTICLE_FILTER_H_

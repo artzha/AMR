@@ -14,17 +14,14 @@ void AckermannSampler::update(const Eigen::Vector2f& new_vel,
   linear_vel_ = new_vel.norm();
   angular_vel_ = new_ang_vel;
   local_target_ = new_local_target;
-
-  // TODO: Transform point cloud from lidar to base_link frame
   point_cloud_ = new_point_cloud;
 
-  static const bool kDebug = true;
-  if (kDebug) {
-    cout << "AckermannSampler::update() called" << endl;
+  if (FLAGS_v > 1) {
+    cout << "================= [Navigation Sampler] Update ================" << endl;
     cout << "Linear velocity: " << linear_vel_ << endl;
     cout << "Angular velocity: " << angular_vel_ << endl;
     cout << "Local target: " << local_target_.transpose() << endl;
-    cout << "Point cloud size: " << point_cloud_.size() << endl;
+    cout << "==============================================================\n" << endl;
   }
 }
 
@@ -43,7 +40,7 @@ std::vector<std::shared_ptr<ConstantCurvatureArc>> AckermannSampler::getSamples(
   // Curvature limits in params only apply when we have 0 velocity
   if (linear_vel_ > max_ds_dot) {
     cmin = max(cmin, (angular_vel_ - max_dtheta_dot) / (linear_vel_ + max_ds_dot));
-    cmax = min(cmax, (angular_vel_ + max_dtheta_dot) / (linear_vel_ + max_ds_dot));
+    cmax = min(cmax, (angular_vel_ + max_dtheta_dot) / (linear_vel_ + max_ds_dot));  //
   }
   const float dc = (cmax - cmin) / (n - 1);
 
@@ -56,6 +53,18 @@ std::vector<std::shared_ptr<ConstantCurvatureArc>> AckermannSampler::getSamples(
     checkObstacles(sample);
 
     samples.push_back(sample);
+  }
+
+  if (FLAGS_v > 1) {
+    cout << "==================== [Navigation] Sampler ====================" << endl;
+    cout << "Number of samples: " << samples.size() << endl;
+    cout << "cmax: " << cmax << ", cmin: " << cmin << ", dc: " << dc << endl;
+    cout << "Linear velocity: " << linear_vel_ << endl;
+    cout << "Angular velocity: " << angular_vel_ << endl;
+    cout << "range Angular velocity: " << angular_vel_ - max_dtheta_dot << " to "
+         << angular_vel_ + max_dtheta_dot << endl;
+    cout << "Local target: " << local_target_.transpose() << endl;
+    cout << "==============================================================\n" << endl;
   }
 
   return samples;
@@ -217,6 +226,11 @@ std::shared_ptr<ConstantCurvatureArc> AckermannEvaluator::findBestPath(
   // return path that have the highest score
   std::shared_ptr<ConstantCurvatureArc> best_path = nullptr;
 
+  if (FLAGS_v > 1) {
+    cout << "==================== [Navigation Evaluator] All ===================="
+         << endl;
+    cout << "Local target: " << local_target_.transpose() << endl;
+  }
   float best_score = 0;
   for (const auto& path : samples) {
     const float score = evaluatePath(path);
@@ -227,17 +241,35 @@ std::shared_ptr<ConstantCurvatureArc> AckermannEvaluator::findBestPath(
     }
   }
 
+  if (FLAGS_v > 1) {
+    cout << "================= [Navigation Evaluator] Best =================" << endl;
+    cout << "Best path" << endl;
+    cout << "Curvature: " << best_path->curvature()
+         << ", Arc length: " << best_path->arc_length()
+         << ", Clearance: " << best_path->clearance() << ", Score: " << best_score
+         << endl;
+    cout << "==============================================================\n" << endl;
+  }
+
   return best_path;
-}
+}  // namespace motion_primitives
 
 float AckermannEvaluator::evaluatePath(std::shared_ptr<ConstantCurvatureArc> path) {
-  const float clearance = path->clearance(); // good
-  const float arc_length = path->arc_length(); // good
-  const float dist_to_target = (local_target_ - path->getEndPoint()).norm(); // bad
+  const float clearance = path->clearance();                                  // good
+  const float arc_length = path->arc_length();                                // good
+  const float dist_to_target = (local_target_ - path->getEndPoint()).norm();  // bad
 
   const float score = nav_params_.clearance_weight * clearance +
                       nav_params_.arc_length_weight * arc_length -
                       nav_params_.distance_weight * dist_to_target;
+  // const float score = nav_params_.arc_length_weight * arc_length;
+
+  if (FLAGS_v > 1) {
+    cout << "Curvature: " << path->curvature() << ", Arc length: " << path->arc_length()
+         << ", End point: (" << path->getEndPoint().transpose() << ")"
+         << ", Clearance: " << path->clearance()
+         << ", dist(target): " << dist_to_target << ", Score: " << score << endl;
+  }
   return score;
 }
 

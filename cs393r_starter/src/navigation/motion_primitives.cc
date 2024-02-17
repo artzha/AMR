@@ -60,13 +60,13 @@ float run1DTOC(const navigation::MotionLimits &limits,
 
   // Add debugging printout here
   // bool debug = true;
-  if (true) {
-    std::ofstream file("1DTOC.txt");  // Using constructor to open the file
-    printf("\nPhase: %c\n", phase);
-    file << "x0 " << x0 << " v0 " << v0 << " xf " << xf << " vf " << vf << " toc_v"
-         << toc_velocity << '\n';
-    file.close();
-  }
+  // if (true) {
+  //   std::ofstream file("1DTOC.txt");  // Using constructor to open the file
+  //   printf("\nPhase: %c\n", phase);
+  //   file << "x0 " << x0 << " v0 " << v0 << " xf " << xf << " vf " << vf << " toc_v"
+  //        << toc_velocity << '\n';
+  //   file.close();
+  // }
 
   return toc_velocity;
 }

@@ -196,8 +196,11 @@ void ParticleFilter::Predict(const Vector2f& odom_loc, const float odom_angle) {
     odom_initialized_ = true;
     return;
   }
-
-  printf("\n===============Predict Step===============\n");
+  if (FLAGS_v > 1) {
+    cout << "=============== [Particle Filter] PREDICT STEP ==============" << endl;
+    printf("odom_loc: (%.6f, %.6f) odom_angle: %.6f\n", odom_loc.x(), odom_loc.y(), odom_angle);
+    cout << "==============================================================\n" << endl;
+  }
 
   // U_t = X_t^-1 * X_{t+1} : transformation from prev_odom frame to current odom frame
   // Construct SE(2) matrices: rotate then translate.
@@ -214,11 +217,6 @@ void ParticleFilter::Predict(const Vector2f& odom_loc, const float odom_angle) {
   float sigma_theta =
       fabs(atan2(U.rotation()(1, 0), U.rotation()(0, 0)));  // sin dtheta / cos dtheta
 
-  cout << "sigma_x: " << sigma_x << " sigma_y: " << sigma_y
-       << " sigma_theta: " << sigma_theta << endl;
-
-  printf(
-      "sigma_x: %.6f sigma_y: %.6f sigma_theta: %.6f", sigma_x, sigma_y, sigma_theta);
   // Predict the new pose for each particle with noise
   for (Particle& p : particles_) {
     // Convert particles to SE(2) and add noise

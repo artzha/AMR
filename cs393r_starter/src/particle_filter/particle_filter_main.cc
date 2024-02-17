@@ -107,6 +107,7 @@ void PublishParticles() {
 }
 
 void PublishPredictedScan() {
+  // std::cout << "Publishing Predicted Scan with ROS Time " << ros::Time::now() << std::endl;
   const uint32_t kColor = 0x7DFF00; // Green
   Vector2f robot_loc(0, 0);
   float robot_angle(0);
@@ -161,7 +162,11 @@ void PublishVisualization() {
 
 void LaserCallback(const sensor_msgs::LaserScan& msg) {
   if (FLAGS_v > 0) {
+    cout << "=============== [Particle Filter Main] LaserCallback ==============" << endl;
     printf("Laser t=%f\n", msg.header.stamp.toSec());
+    printf("range_min: %f, range_max: %f, angle_min: %f, angle_max: %f\n",
+           msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
+    cout << "==============================================================\n" << endl;
   }
   last_laser_msg_ = msg;
   particle_filter_.ObserveLaser(

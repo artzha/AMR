@@ -45,8 +45,8 @@
 #include "shared/math/math_util.h"
 #include "shared/ros/ros_helpers.h"
 #include "shared/util/timer.h"
-#include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
+#include "std_msgs/String.h"
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
 
@@ -77,9 +77,11 @@ Navigation* navigation_ = nullptr;
 
 void LaserCallback(const sensor_msgs::LaserScan& msg) {
   if (FLAGS_v > 0) {
+    cout << "=============== [Navigation Main] LaserCallback ==============" << endl;
     printf("Laser t=%f, dt=%f\n",
            msg.header.stamp.toSec(),
            GetWallTime() - msg.header.stamp.toSec());
+    cout << "==============================================================\n" << endl;
   }
   // Location of the laser on the robot. Assumes the laser is forward-facing.
   const Vector2f kLaserLoc(0.2, 0);
@@ -99,9 +101,10 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   int angle_range = msg.angle_max - msg.angle_min;
   int num_rays = angle_range / msg.angle_increment;
 
-  for(int i = 0; i < num_rays; i ++) {
+  // Convert the LaserScan to a point cloud in the base_link frame
+  for (int i = 0; i < num_rays; i++) {
     double r = msg.ranges[i];
-    if(r < msg.range_max && r > msg.range_min) {
+    if (r < msg.range_max && r > msg.range_min) {
       double theta = msg.angle_min + i * msg.angle_increment;
       Vector2f point = {r * cos(theta), r * sin(theta)};
       point += kLaserLoc;
@@ -115,7 +118,10 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
 
 void OdometryCallback(const nav_msgs::Odometry& msg) {
   if (FLAGS_v > 0) {
+    cout << "============= [Navigation Main] OdometryCallback =============" << endl;
     printf("Odometry t=%f\n", msg.header.stamp.toSec());
+    printf("Position: (%f,%f)\n", msg.pose.pose.position.x, msg.pose.pose.position.y);
+    cout << "==============================================================\n" << endl;
   }
   navigation_->UpdateOdometry(
       Vector2f(msg.pose.pose.position.x, msg.pose.pose.position.y),
@@ -132,9 +138,7 @@ void GoToCallback(const geometry_msgs::PoseStamped& msg) {
   navigation_->SetNavGoal(loc, angle);
 }
 
-void AutonomyCallback(const std_msgs::Bool& msg) {
-  navigation_->SetAutonomy(msg.data);
-}
+void AutonomyCallback(const std_msgs::Bool& msg) { navigation_->SetAutonomy(msg.data); }
 
 void SignalHandler(int) {
   if (!run_) {
@@ -147,7 +151,10 @@ void SignalHandler(int) {
 
 void LocalizationCallback(const amrl_msgs::Localization2DMsg msg) {
   if (FLAGS_v > 0) {
+    cout << "=========== [Navigation Main] LocalizationCallback ============" << endl;
     printf("Localization t=%f\n", GetWallTime());
+    printf("Position: (%f,%f)\n", msg.pose.x, msg.pose.y);
+    cout << "==============================================================\n" << endl;
   }
   navigation_->UpdateLocation(Vector2f(msg.pose.x, msg.pose.y), msg.pose.theta);
 }
@@ -168,6 +175,8 @@ void LoadConfig(navigation::NavigationParams& params) {
   REAL_PARAM(max_path_length);
   REAL_PARAM(max_clearance);
   REAL_PARAM(clearance_weight);
+  REAL_PARAM(arc_length_weight);
+  REAL_PARAM(distance_weight);
   REAL_PARAM(goal_tolerance);
   REAL_PARAM(robot_length);
   REAL_PARAM(robot_width);
@@ -186,6 +195,8 @@ void LoadConfig(navigation::NavigationParams& params) {
   params.max_path_length = CONFIG_max_path_length;
   params.max_clearance = CONFIG_max_clearance;
   params.clearance_weight = CONFIG_clearance_weight;
+  params.arc_length_weight = CONFIG_arc_length_weight;
+  params.distance_weight = CONFIG_distance_weight;
   params.goal_tolerance = CONFIG_goal_tolerance;
   params.robot_length = CONFIG_robot_length;
   params.robot_width = CONFIG_robot_width;
@@ -219,7 +230,7 @@ int main(int argc, char** argv) {
   RateLoop loop(20.0);
   while (run_ && ros::ok()) {
     ros::spinOnce();
-    
+
     navigation_->Run();
     loop.Sleep();
   }

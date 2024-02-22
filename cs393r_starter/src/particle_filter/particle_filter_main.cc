@@ -107,8 +107,9 @@ void PublishParticles() {
 }
 
 void PublishPredictedScan() {
-  // std::cout << "Publishing Predicted Scan with ROS Time " << ros::Time::now() << std::endl;
-  const uint32_t kColor = 0x7DFF00; // Green
+  // std::cout << "Publishing Predicted Scan with ROS Time " << ros::Time::now() <<
+  // std::endl;
+  const uint32_t kColor = 0x7DFF00;  // Green
   Vector2f robot_loc(0, 0);
   float robot_angle(0);
   particle_filter_.GetLocation(&robot_loc, &robot_angle);
@@ -161,17 +162,23 @@ void PublishVisualization() {
 }
 
 void LaserCallback(const sensor_msgs::LaserScan& msg) {
-  if (FLAGS_v > 0) {
-    cout << "=============== [Particle Filter Main] LaserCallback ==============" << endl;
-    printf("Laser t=%f\n", msg.header.stamp.toSec());
-    printf("range_min: %f, range_max: %f, angle_min: %f, angle_max: %f\n",
-           msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
-    cout << "==============================================================\n" << endl;
-  }
   last_laser_msg_ = msg;
   particle_filter_.ObserveLaser(
       msg.ranges, msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
   PublishVisualization();
+
+  if (FLAGS_v > 1) {
+    cout << "============ [Particle Filter Main] LaserCallback ============" << endl;
+    printf("Laser t=%f\n", msg.header.stamp.toSec());
+    printf(
+        "num_ranges: %lu, range_min: %f, range_max: %f, angle_min: %f, angle_max: %f\n",
+        msg.ranges.size(),
+        msg.range_min,
+        msg.range_max,
+        msg.angle_min,
+        msg.angle_max);
+    cout << "==============================================================\n" << endl;
+  }
 }
 
 void PublishLocation() {
@@ -187,15 +194,20 @@ void PublishLocation() {
 }
 
 void OdometryCallback(const nav_msgs::Odometry& msg) {
-  if (FLAGS_v > 0) {
-    printf("Odometry t=%f\n", msg.header.stamp.toSec());
-  }
   const Vector2f odom_loc(msg.pose.pose.position.x, msg.pose.pose.position.y);
   const float odom_angle =
       2.0 * atan2(msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
   particle_filter_.Predict(odom_loc, odom_angle);
   PublishLocation();
   PublishVisualization();
+
+  if (FLAGS_v > 1) {
+    cout << "=========== [Particle Filter Main] OdometryCallBack ==========" << endl;
+    printf("Odometry t=%f\n", msg.header.stamp.toSec());
+    printf("odom loc: (%f,%f)\n", msg.pose.pose.position.x, msg.pose.pose.position.y);
+    printf("odom angle: %f\u00b0\n", RadToDeg(odom_angle));
+    cout << "==============================================================\n" << endl;
+  }
 }
 
 string GetMapFileFromName(const string& map) {
@@ -220,8 +232,7 @@ void InitCallback(const amrl_msgs::Localization2DMsg& msg) {
 void ProcessLive(ros::NodeHandle* n) {
   ros::Subscriber initial_pose_sub =
       n->subscribe(FLAGS_init_topic.c_str(), 1, InitCallback);
-  ros::Subscriber laser_sub =
-      n->subscribe(FLAGS_laser_topic.c_str(), 1, LaserCallback);
+  ros::Subscriber laser_sub = n->subscribe(FLAGS_laser_topic.c_str(), 1, LaserCallback);
   ros::Subscriber odom_sub =
       n->subscribe(FLAGS_odom_topic.c_str(), 1, OdometryCallback);
 

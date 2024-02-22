@@ -24,12 +24,15 @@
 
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
+#include "shared/math/math_util.h"
 #include "shared/math/line2d.h"
 #include "shared/util/random.h"
 #include "vector_map/vector_map.h"
 
 #ifndef SRC_PARTICLE_FILTER_H_
 #define SRC_PARTICLE_FILTER_H_
+
+using std::vector;
 
 namespace particle_filter {
 
@@ -66,7 +69,7 @@ class ParticleFilter {
   void GetLocation(Eigen::Vector2f* loc, float* angle) const;
 
   // Update particle weight based on laser.
-  void Update(const std::vector<float>& ranges,
+  void Update(const std::vector<float>& observed_ranges,
               float range_min,
               float range_max,
               float angle_min,
@@ -85,6 +88,9 @@ class ParticleFilter {
                               float angle_min,
                               float angle_max,
                               std::vector<Eigen::Vector2f>& scan);
+
+  double computeNormalLikelihood(const vector<float>& predicted_ranges,
+                                 const vector<float>& observed_ranges);
 
  private:
   // List of particles being tracked.

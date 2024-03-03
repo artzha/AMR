@@ -1,7 +1,7 @@
 NavigationParameters = {
     dt = 0.05;
     -- 0.05 is the default value for system latency on real robot
-    system_latency = 0.01; 
+    system_latency = 0.0; 
 
     max_linear_accel = 5.0;
     max_linear_deccel = 5.0;

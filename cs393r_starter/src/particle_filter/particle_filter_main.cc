@@ -37,6 +37,7 @@
 #include "eigen3/Eigen/Geometry"
 #include "geometry_msgs/PoseArray.h"
 #include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "nav_msgs/Odometry.h"
 #include "particle_filter.h"
 #include "ros/package.h"
@@ -69,6 +70,7 @@ DEFINE_string(laser_topic, "/scan", "Name of ROS topic for LIDAR data");
 DEFINE_string(odom_topic, "/odom", "Name of ROS topic for odometry data");
 DEFINE_string(init_topic, "/set_pose", "Name of ROS topic for initialization");
 
+DEFINE_bool(CUDA, false, "Use CUDA for particle filter");
 DECLARE_int32(v);
 
 // Create config reader entries
@@ -147,7 +149,7 @@ void PublishTrajectory() {
 
 void PublishVisualization() {
   static double t_last = 0;
-  if (GetMonotonicTime() - t_last < 0.05) {
+  if (GetMonotonicTime() - t_last < 0.5) {  // 0.05) {
     // Rate-limit visualization.
     return;
   }
@@ -161,13 +163,36 @@ void PublishVisualization() {
   visualization_publisher_.publish(vis_msg_);
 }
 
+void PublishLocation() {
+  Vector2f robot_loc(0, 0);
+  float robot_angle(0);
+  particle_filter_.GetLocation(&robot_loc, &robot_angle);
+  localization_msg_.header.stamp = ros::Time::now();
+  localization_msg_.map = current_map_;
+  localization_msg_.pose.x = robot_loc.x();
+  localization_msg_.pose.y = robot_loc.y();
+  localization_msg_.pose.theta = math_util::AngleMod(robot_angle);
+  localization_publisher_.publish(localization_msg_);
+}
+
 void LaserCallback(const sensor_msgs::LaserScan& msg) {
+  static CumulativeFunctionTimer function_timer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&function_timer_);
+
   last_laser_msg_ = msg;
-  particle_filter_.ObserveLaser(
-      msg.ranges, msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
+  if (FLAGS_CUDA) {
+    LOG(WARNING) << "CUDA not implemented";
+
+    // particle_filter_.ObserveLaserCUDA(
+    //     msg.ranges, msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
+  } else {
+    particle_filter_.ObserveLaser(
+        msg.ranges, msg.range_min, msg.range_max, msg.angle_min, msg.angle_max);
+  }
+
   PublishVisualization();
 
-  if (FLAGS_v > 1) {
+  if (FLAGS_v > 10) {
     cout << "============ [Particle Filter Main] LaserCallback ============" << endl;
     printf("Laser t=%f\n", msg.header.stamp.toSec());
     printf(
@@ -181,19 +206,9 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   }
 }
 
-void PublishLocation() {
-  Vector2f robot_loc(0, 0);
-  float robot_angle(0);
-  particle_filter_.GetLocation(&robot_loc, &robot_angle);
-  localization_msg_.header.stamp = ros::Time::now();
-  localization_msg_.map = current_map_;
-  localization_msg_.pose.x = robot_loc.x();
-  localization_msg_.pose.y = robot_loc.y();
-  localization_msg_.pose.theta = robot_angle;
-  localization_publisher_.publish(localization_msg_);
-}
-
 void OdometryCallback(const nav_msgs::Odometry& msg) {
+  static CumulativeFunctionTimer function_timer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&function_timer_);
   const Vector2f odom_loc(msg.pose.pose.position.x, msg.pose.pose.position.y);
   const float odom_angle =
       2.0 * atan2(msg.pose.pose.orientation.z, msg.pose.pose.orientation.w);
@@ -201,7 +216,7 @@ void OdometryCallback(const nav_msgs::Odometry& msg) {
   PublishLocation();
   PublishVisualization();
 
-  if (FLAGS_v > 1) {
+  if (FLAGS_v > 10) {
     cout << "=========== [Particle Filter Main] OdometryCallBack ==========" << endl;
     printf("Odometry t=%f\n", msg.header.stamp.toSec());
     printf("odom loc: (%f,%f)\n", msg.pose.pose.position.x, msg.pose.pose.position.y);
@@ -235,6 +250,8 @@ void ProcessLive(ros::NodeHandle* n) {
   ros::Subscriber laser_sub = n->subscribe(FLAGS_laser_topic.c_str(), 1, LaserCallback);
   ros::Subscriber odom_sub =
       n->subscribe(FLAGS_odom_topic.c_str(), 1, OdometryCallback);
+  // ros::Subscriber true_pose_sub =
+  //     n->subscribe(FLAGS_true_pose_topic.c_str(), 1, TruePoseCallback);
 
   particle_filter_.Initialize(GetMapFileFromName(current_map_),
                               Vector2f(CONFIG_init_x_, CONFIG_init_x_),
@@ -258,6 +275,7 @@ void SignalHandler(int) {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, false);
+  google::InitGoogleLogging(argv[0]);
   signal(SIGINT, SignalHandler);
   // Initialize ROS.
   ros::init(argc, argv, "particle_filter", ros::init_options::NoSigintHandler);

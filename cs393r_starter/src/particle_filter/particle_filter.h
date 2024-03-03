@@ -18,15 +18,17 @@
 \author  Joydeep Biswas, (C) 2018
 */
 //========================================================================
-
 #include <algorithm>
+#include <numeric>
+#include <string>
 #include <vector>
 
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
-#include "shared/math/math_util.h"
 #include "shared/math/line2d.h"
+#include "shared/math/math_util.h"
 #include "shared/util/random.h"
+#include "util/timer.h"
 #include "vector_map/vector_map.h"
 
 #ifndef SRC_PARTICLE_FILTER_H_
@@ -36,10 +38,18 @@ using std::vector;
 
 namespace particle_filter {
 
+// struct ParticleCUDA {
+//   float2 loc;
+//   float angle;
+//   double weight;
+//   double log_likelihood;
+// };
+
 struct Particle {
   Eigen::Vector2f loc;
   float angle;
   double weight;
+  double log_likelihood;
 };
 
 class ParticleFilter {
@@ -90,7 +100,15 @@ class ParticleFilter {
                               std::vector<Eigen::Vector2f>& scan);
 
   double computeNormalLikelihood(const vector<float>& predicted_ranges,
-                                 const vector<float>& observed_ranges);
+                                 const vector<float>& observed_ranges,
+                                 float range_min,
+                                 float range_max);
+
+  // void ObserveLaserCUDA(const std::vector<float>& ranges,
+  //                                  float range_min,
+  //                                  float range_max,
+  //                                  float angle_min,
+  //                                  float angle_max);
 
  private:
   // List of particles being tracked.

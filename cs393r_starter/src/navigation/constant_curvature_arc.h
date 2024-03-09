@@ -4,8 +4,6 @@
 #include "eigen3/Eigen/Dense"
 #include "motion_primitives.h"
 
-using Eigen::Vector2f;
-
 namespace motion_primitives {
 class ConstantCurvatureArc {
  public:
@@ -25,6 +23,8 @@ class ConstantCurvatureArc {
   void set_arc_length(float arc_length) { arc_length_ = arc_length; }
 
   void set_clearance(float clearance) { clearance_ = clearance; }
+
+  Eigen::Vector2f getEndPoint();
 
   float curvature() const { return curvature_; }
 

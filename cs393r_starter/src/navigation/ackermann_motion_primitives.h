@@ -22,8 +22,8 @@ namespace motion_primitives {
 class AckermannSampler {
  public:
   AckermannSampler() : linear_vel_(0), angular_vel_(0), local_target_(0, 0) {}
-  AckermannSampler(const navigation::NavigationParams& nav_params_)
-      : nav_params_(nav_params_),
+  AckermannSampler(const navigation::NavigationParams& nav_params)
+      : nav_params_(nav_params),
         linear_vel_(0),
         angular_vel_(0),
         local_target_(0, 0) {}
@@ -50,10 +50,11 @@ class AckermannSampler {
 
 class AckermannEvaluator {
  public:
-  AckermannEvaluator() = default;
+  AckermannEvaluator(const navigation::NavigationParams& nav_params)
+      : nav_params_(nav_params) {}
   ~AckermannEvaluator() = default;
 
-  void update();
+  void update(const Eigen::Vector2f& new_local_target);
 
   std::shared_ptr<ConstantCurvatureArc> findBestPath(
       std::vector<std::shared_ptr<ConstantCurvatureArc>>& samples);
@@ -61,6 +62,9 @@ class AckermannEvaluator {
   float evaluatePath(std::shared_ptr<ConstantCurvatureArc> path_ptr);
 
  private:
+  navigation::NavigationParams nav_params_;
+
+  Eigen::Vector2f local_target_;
 };
 }  // namespace motion_primitives
 

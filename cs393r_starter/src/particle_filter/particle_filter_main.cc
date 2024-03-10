@@ -103,8 +103,15 @@ void InitializeMsgs() {
 void PublishParticles() {
   vector<particle_filter::Particle> particles;
   particle_filter_.GetParticles(&particles);
+  // Scale the color from 0 to max value based on relative particle weight
+
+
   for (const particle_filter::Particle& p : particles) {
-    DrawParticle(p.loc, p.angle, vis_msg_);
+    uint8_t red = static_cast<uint8_t>((1 - p.weight) * 255);
+    uint8_t green = static_cast<uint8_t>(p.weight * 255);
+    uint32_t color = (red << 16) | (green << 8);
+    
+    DrawParticle(p.loc, p.angle, vis_msg_, color);
   }
 }
 
@@ -116,6 +123,7 @@ void PublishPredictedScan() {
   float robot_angle(0);
   particle_filter_.GetLocation(&robot_loc, &robot_angle);
   vector<Vector2f> predicted_scan;
+
   particle_filter_.GetPredictedPointCloud(robot_loc,
                                           robot_angle,
                                           last_laser_msg_.ranges.size(),
@@ -127,6 +135,38 @@ void PublishPredictedScan() {
   for (const Vector2f& p : predicted_scan) {
     DrawPoint(p, kColor, vis_msg_);
   }
+
+  // // DEBUG downsampled point cloud
+  // const uint32_t kSubColor = 0xFF0000;  // Red
+  // size_t num_sub_ranges = size_t(last_laser_msg_.ranges.size() / 10); // CHANGE THIS IF DS Factor CHANGES!
+  // vector<float> sub_ranges(num_sub_ranges);
+  // vector<Vector2f> sub_predicted_scan;
+
+  // float d_theta = (last_laser_msg_.angle_max - last_laser_msg_.angle_min) / (last_laser_msg_.ranges.size() - 1);
+  // for (size_t i = 0; i < num_sub_ranges; ++i) {
+  //   size_t copy_idx = i * 10;
+  //   sub_ranges[i] = last_laser_msg_.ranges[copy_idx];
+  // }
+  // float new_angle_max = last_laser_msg_.angle_min + d_theta * 10 * (num_sub_ranges - 1) ;
+
+  // particle_filter_.GetPredictedPointCloud(robot_loc,
+  //                                         robot_angle,
+  //                                         num_sub_ranges,
+  //                                         last_laser_msg_.range_min,
+  //                                         last_laser_msg_.range_max,
+  //                                         last_laser_msg_.angle_min,
+  //                                         new_angle_max,
+  //                                         sub_predicted_scan);
+  // for (const Vector2f& p : sub_predicted_scan) {
+  //   DrawPoint(p, kSubColor, vis_msg_);
+  // }
+
+  // // Draw lines between original and downsampled point cloud corresopndences
+  // for (size_t i = 0; i < num_sub_ranges; ++i) {
+  //   size_t ds_idx = i * 10;
+  //   DrawLine(predicted_scan[ds_idx], sub_predicted_scan[i], 0x000000, vis_msg_); 
+  // }
+
 }
 
 void PublishTrajectory() {
@@ -192,7 +232,32 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
 
   PublishVisualization();
 
-  if (FLAGS_v > 10) {
+  // (DEBUGING) Visualize range differences
+  // Get predicted point cloud
+  // size_t num_sub_ranges = size_t(msg.ranges.size() / 10);
+  // vector<float> sub_ranges(num_sub_ranges);
+
+  // for (size_t i = 0; i < num_sub_ranges; ++i) {
+  //   size_t copy_idx = i * CONFIG_ds_factor;
+  //   sub_ranges[i] = ranges[copy_idx];
+  // }
+
+  // Vector2f robot_loc(0, 0);
+  // float robot_angle(0);
+  // vector<Vector2f> predicted_scan;
+  // particle_filter_.GetLocation(&robot_loc, &robot_angle);
+  // particle_filter_.GetPredictedPointCloud(robot_loc,
+  //                                         robot_angle,
+  //                                         sub_ranges.size(),
+  //                                         last_laser_msg_.range_min,
+  //                                         last_laser_msg_.range_max,
+  //                                         last_laser_msg_.angle_min,
+  //                                         last_laser_msg_.angle_max,
+  //                                         predicted_scan);
+  // // Get Observed Point cloud
+  
+
+  if (FLAGS_v > 1) {
     cout << "============ [Particle Filter Main] LaserCallback ============" << endl;
     printf("Laser t=%f\n", msg.header.stamp.toSec());
     printf(
@@ -216,7 +281,7 @@ void OdometryCallback(const nav_msgs::Odometry& msg) {
   PublishLocation();
   PublishVisualization();
 
-  if (FLAGS_v > 10) {
+  if (FLAGS_v > 1) {
     cout << "=========== [Particle Filter Main] OdometryCallBack ==========" << endl;
     printf("Odometry t=%f\n", msg.header.stamp.toSec());
     printf("odom loc: (%f,%f)\n", msg.pose.pose.position.x, msg.pose.pose.position.y);

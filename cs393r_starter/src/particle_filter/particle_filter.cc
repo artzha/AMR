@@ -57,7 +57,6 @@ CONFIG_FLOAT(ds_factor, "ds_factor");
 CONFIG_FLOAT(k_x_, "k_x");
 CONFIG_FLOAT(k_y_, "k_y");
 CONFIG_FLOAT(k_theta_, "k_theta");
-CONFIG_FLOAT(k_likelihood_threshold_, "k_likelihood_threshold");
 CONFIG_FLOAT(k_laser_loc_x_, "k_laser_loc.x");
 CONFIG_FLOAT(k_laser_loc_y_, "k_laser_loc.y");
 CONFIG_FLOAT(d_short, "d_short");
@@ -255,10 +254,6 @@ void ParticleFilter::Resample() {
     }
     new_particles[i] = particles_[index];
     new_particles[i].weight = 1.0 / particles_.size();
-
-    // if (max_log_likelihood < CONFIG_k_likelihood_threshold_) {
-
-    // }
   }
 
   particles_ = new_particles;

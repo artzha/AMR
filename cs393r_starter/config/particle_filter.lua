@@ -10,7 +10,6 @@ init_r = 0; -- in degrees
 k_x = 0.3;
 k_y = 0.1;
 k_theta = 1.2;
-k_likelihood_threshold = -10;
 num_particles = 20;
 ds_factor = 10;
 

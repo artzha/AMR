@@ -36,6 +36,7 @@
 #include "shared/util/timer.h"
 #include "visualization/visualization.h"
 
+DEFINE_bool(simulation, false, "Run in simulation mode");
 DEFINE_bool(Test1DTOC, false, "Run 1D line time-optimal controller test");
 DEFINE_bool(TestSamplePaths, true, "Run sample paths test");
 
@@ -224,6 +225,8 @@ void Navigation::ForwardPredict(double time) {
       }
       // Exponential map of translation part of se2 (in local frame)
       Eigen::Vector2f dloc = V * Eigen::Vector2f(ds, 0);
+      // Update odom_tf in odom frame
+      fp_odom_tf = fp_odom_tf * Eigen::Translation2f(dloc) * Eigen::Rotation2Df(dtheta);
       // Update odom_loc_ and odom_angle_ in odom frame
       fp_odom_tf = fp_odom_tf * Eigen::Translation2f(dloc) * Eigen::Rotation2Df(dtheta);
       odom_loc_ = fp_odom_tf.translation();
@@ -289,7 +292,7 @@ void Navigation::Run() {
     return;
   }
 
-  if (true) {
+  if (FLAGS_simulation || autonomy_enabled_) {
     // Predict laserscan and robot's odom state
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
@@ -310,7 +313,7 @@ void Navigation::Run() {
 
   // Visualize pointcloud
   for (auto point : fp_point_cloud_) {
-    visualization::DrawPoint(point, 0x7DFF00, local_viz_msg_);  // 32762
+    visualization::DrawPoint(point, 32762, local_viz_msg_);  // 32762
   }
 
   // Add timestamps to all messages.
@@ -323,8 +326,9 @@ void Navigation::Run() {
 }
 
 void Navigation::test1DTOC() {
-  float c = 0.2f;
-  float r = 1 / c;
+  float c = 0;
+  // float r = 1 / c;
+  float r = 100;
   drive_msg_.curvature = c;
   float theta = M_PI_4;
   Vector2f goal_loc =

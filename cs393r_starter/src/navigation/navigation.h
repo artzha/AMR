@@ -102,6 +102,8 @@ class Navigation {
   // Used to set autonomy status
   void SetAutonomy(bool autonomy_enabled);
 
+  void Plan();
+
  private:
   // Map of the environment.
   vector_map::VectorMap map_;

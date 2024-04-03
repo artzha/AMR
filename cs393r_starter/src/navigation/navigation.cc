@@ -24,6 +24,7 @@
 #include "amrl_msgs/AckermannCurvatureDriveMsg.h"
 #include "amrl_msgs/Pose2Df.h"
 #include "amrl_msgs/VisualizationMsg.h"
+#include "astar.h"
 #include "eigen3/Eigen/Dense"
 #include "eigen3/Eigen/Geometry"
 #include "gflags/gflags.h"
@@ -38,15 +39,17 @@
 
 DEFINE_bool(simulation, false, "Run in simulation mode");
 DEFINE_bool(Test1DTOC, false, "Run 1D line time-optimal controller test");
-DEFINE_bool(TestSamplePaths, true, "Run sample paths test");
+DEFINE_bool(TestSamplePaths, false, "Run sample paths test");
 DEFINE_bool(TestMapLoading, true, "Run occupancy map loading test");
+DEFINE_bool(TestAStar, true, "Run A* test");
 
 namespace {
 ros::Publisher drive_pub_;
 ros::Publisher viz_pub_;
 VisualizationMsg local_viz_msg_;
 VisualizationMsg global_viz_msg_;
-VisualizationMsg occ_viz_msg_;
+VisualizationMsg occupancy_viz_msg_;
+VisualizationMsg planning_viz_msg_;
 AckermannCurvatureDriveMsg drive_msg_;
 // Epsilon value for handling limited numerical precision.
 const float kEpsilon = 1e-5;
@@ -77,16 +80,18 @@ Navigation::Navigation(const string& map_name,
   occ_map_ = OccupancyMap(map_.lines, params);
 
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>("ackermann_curvature_drive", 1);
-  viz_pub_ = n->advertise<VisualizationMsg>("visualization", 0);
+  viz_pub_ = n->advertise<VisualizationMsg>("visualization", 10);
   local_viz_msg_ =
       visualization::NewVisualizationMessage("base_link", "navigation_local");
   global_viz_msg_ = visualization::NewVisualizationMessage("map", "navigation_global");
-  occ_viz_msg_ = visualization::NewVisualizationMessage("map", "navigation_occ");
+  occupancy_viz_msg_ =
+      visualization::NewVisualizationMessage("map", "navigation_occupancy");
+  planning_viz_msg_ =
+      visualization::NewVisualizationMessage("map", "navigation_planning");
 
   if (FLAGS_TestMapLoading) {
-    occ_map_.visualization(occ_viz_msg_);
-    visualization::ClearVisualizationMsg(occ_viz_msg_);
-    viz_pub_.publish(occ_viz_msg_);
+    visualization::ClearVisualizationMsg(occupancy_viz_msg_);
+    occ_map_.visualization(occupancy_viz_msg_);
   }
 
   assert(params_.obstacle_margin <
@@ -291,12 +296,30 @@ void Navigation::ForwardPredict(double time) {
   }
 }
 
-void Navigation::Run() {
-  // This function gets called 20 times a second to form the control loop.
+void Navigation::Plan() {
+  std::cout << "============= [Navigation] Plan =============" << std::endl;
+  std::cout << "Start loc: " << odom_loc_.transpose() << std::endl;
+  std::cout << "Goal loc: " << nav_goal_loc_.transpose() << std::endl;
 
-  // if (FLAGS_TestMapLoading) {
-  //   viz_pub_.publish(occ_viz_msg_);
+  // if (FLAGS_TestAStar) {
   // }
+  AStar astar(occ_map_);
+  Eigen::Vector2f start_loc(-10.5, 19);
+  Eigen::Vector2f goal_loc(-10.1, 4.7);
+  const std::vector<Eigen::Vector2f> path = astar.findPath(start_loc, goal_loc);
+
+  visualization::ClearVisualizationMsg(
+      planning_viz_msg_);                  // clear vis message after publishing
+  astar.visualization(planning_viz_msg_);  // Visualize the A* search (optional)
+}
+
+void Navigation::Run() {
+  static double t_last = 0;
+  if (GetMonotonicTime() - t_last >= 5) {  // Publish vis messages at 1 hz
+    viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
+    viz_pub_.publish(planning_viz_msg_);
+    t_last = GetMonotonicTime();
+  }
 
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
@@ -313,7 +336,12 @@ void Navigation::Run() {
 
     cout << "RUN" << endl;
 
+    static bool plan = false;
     // Check if the car needs to plan a new navigation path
+    if (!plan) {
+      Plan();
+      plan = true;
+    }
 
     // Pass start and goal location to astar -> path in map frame
 
@@ -346,7 +374,7 @@ void Navigation::Run() {
   // Publish messages.
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
-}
+}  // namespace navigation
 
 void Navigation::test1DTOC() {
   float c = 0;

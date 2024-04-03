@@ -23,8 +23,8 @@
 
 #include <string>
 
-#include "eigen3/Eigen/Dense"
 #include "amrl_msgs/VisualizationMsg.h"
+#include "eigen3/Eigen/Dense"
 
 namespace visualization {
 
@@ -32,8 +32,8 @@ namespace visualization {
 void ClearVisualizationMsg(amrl_msgs::VisualizationMsg& msg);
 
 // Return new visualization message, with initialized headers and namespace.
-amrl_msgs::VisualizationMsg NewVisualizationMessage(
-    const std::string& frame, const std::string& ns);
+amrl_msgs::VisualizationMsg NewVisualizationMessage(const std::string& frame,
+                                                    const std::string& ns);
 
 // Add a single point to the visualization message.
 void DrawPoint(const Eigen::Vector2f& p,

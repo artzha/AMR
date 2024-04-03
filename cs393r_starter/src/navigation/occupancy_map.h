@@ -55,12 +55,12 @@ class OccupancyMap {
     }
   }
 
-  std::pair<int, int> getIdx(float x, float y) {
+  std::pair<int, int> getIdx(float x, float y) const {
     return std::make_pair(static_cast<int>((x - minX) / resolution),
                           static_cast<int>((y - minY) / resolution));
   }
 
-  Eigen::Vector2f getPose(int xIdx, int yIdx) {
+  Eigen::Vector2f getPose(int xIdx, int yIdx) const {
     return Eigen::Vector2f((xIdx + 0.5f) * resolution + minX,
                            (yIdx + 0.5f) * resolution + minY);
   }
@@ -68,6 +68,11 @@ class OccupancyMap {
   void addLine(const line2f& line) { drawLineAndInflate(line); }
 
   const std::vector<std::vector<bool>>& getGrid() const { return grid; }
+
+  bool isOccupied(const Eigen::Vector2i& idx) const { return grid[idx.y()][idx.x()]; }
+
+  int getWidth() const { return mapWidth; }
+  int getHeight() const { return mapHeight; }
 
   void visualization(VisualizationMsg& global_msg) {
     // For each occupied cell, convert to xy coordinates and publish as a square

@@ -26,4 +26,8 @@ NavigationParameters = {
     robot_wheelbase = 0.324;
     obstacle_margin = 0.05;
     lidar_offset = 0.21;
+
+    resolution = 0.1; -- 0.5 meter of accuracy -> meters / cell
+    robotRadius = 1.0; -- max radius of robot when turning
+    -- robot_radius    = 0.45; -- radius of robot length and width + obstacle margin
 }

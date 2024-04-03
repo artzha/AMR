@@ -27,11 +27,13 @@ struct NavigationParams {
         robot_width(0.5),
         robot_wheelbase(0.5),
         obstacle_margin(0.5),
-        lidar_offset(0.5) {}
+        lidar_offset(0.5),
+        resolution(0.5),
+        robotRadius(0.3) {}
 
   double dt;
   double system_latency;
-  
+
   // Parameters for the path sampler
   MotionLimits linear_limits;
   MotionLimits angular_limits;
@@ -53,6 +55,8 @@ struct NavigationParams {
   float obstacle_margin;
   float lidar_offset;
 
+  float resolution;
+  float robotRadius;
 };
 }  // namespace navigation
 #endif  // NAVIGATION_PARAMS_H

@@ -183,6 +183,8 @@ void LoadConfig(navigation::NavigationParams& params) {
   REAL_PARAM(robot_wheelbase);
   REAL_PARAM(obstacle_margin);
   REAL_PARAM(lidar_offset);
+  REAL_PARAM(resolution);
+  REAL_PARAM(robotRadius);
 
   config_reader::ConfigReader reader({FLAGS_nav_config});
   params.dt = CONFIG_dt;
@@ -203,6 +205,8 @@ void LoadConfig(navigation::NavigationParams& params) {
   params.robot_wheelbase = CONFIG_robot_wheelbase;
   params.obstacle_margin = CONFIG_obstacle_margin;
   params.lidar_offset = CONFIG_lidar_offset;
+  params.resolution = CONFIG_resolution;
+  params.robotRadius = CONFIG_robotRadius;
 }
 
 int main(int argc, char** argv) {

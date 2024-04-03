@@ -39,12 +39,14 @@
 DEFINE_bool(simulation, false, "Run in simulation mode");
 DEFINE_bool(Test1DTOC, false, "Run 1D line time-optimal controller test");
 DEFINE_bool(TestSamplePaths, true, "Run sample paths test");
+DEFINE_bool(TestMapLoading, true, "Run occupancy map loading test");
 
 namespace {
 ros::Publisher drive_pub_;
 ros::Publisher viz_pub_;
 VisualizationMsg local_viz_msg_;
 VisualizationMsg global_viz_msg_;
+VisualizationMsg occ_viz_msg_;
 AckermannCurvatureDriveMsg drive_msg_;
 // Epsilon value for handling limited numerical precision.
 const float kEpsilon = 1e-5;
@@ -72,12 +74,20 @@ Navigation::Navigation(const string& map_name,
       nav_goal_loc_(0, 0),
       nav_goal_angle_(0) {
   map_.Load(GetMapFileFromName(map_name));
+  occ_map_ = OccupancyMap(map_.lines, params);
+
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>("ackermann_curvature_drive", 1);
-  viz_pub_ = n->advertise<VisualizationMsg>("visualization", 10);
+  viz_pub_ = n->advertise<VisualizationMsg>("visualization", 0);
   local_viz_msg_ =
       visualization::NewVisualizationMessage("base_link", "navigation_local");
   global_viz_msg_ = visualization::NewVisualizationMessage("map", "navigation_global");
-  InitRosHeader("base_link", &drive_msg_.header);
+  occ_viz_msg_ = visualization::NewVisualizationMessage("map", "navigation_occ");
+
+  if (FLAGS_TestMapLoading) {
+    occ_map_.visualization(occ_viz_msg_);
+    visualization::ClearVisualizationMsg(occ_viz_msg_);
+    viz_pub_.publish(occ_viz_msg_);
+  }
 
   assert(params_.obstacle_margin <
          (1.0f / params_.max_curvature - params_.robot_width) / 2);
@@ -116,10 +126,11 @@ void Navigation::PruneCommandQueue() {
       min(t_odom_, t_point_cloud_);  // conservative time range for command history
 
   for (auto cmd_it = command_history_.begin(); cmd_it != command_history_.end();) {
-    if (cmd_it->time < update_time - params_.dt) {  // we received another command that
-                                                    // is closer to our update time
-                                                    // anything farther in time away than 1 dt from 
-                                                    // update time is irrelevant
+    if (cmd_it->time <
+        update_time - params_.dt) {  // we received another command that
+                                     // is closer to our update time
+                                     // anything farther in time away than 1 dt from
+                                     // update time is irrelevant
       cmd_it = command_history_.erase(cmd_it);
     } else {
       ++cmd_it;
@@ -182,8 +193,8 @@ void Navigation::ForwardPredict(double time) {
     const float cmd_v = cmd.drive_msg.velocity;
     const float cmd_omega = cmd.drive_msg.velocity * cmd.drive_msg.curvature;
     // Assume constant velocity and omega over the time interval
-    // want to compute distance traveled (vel * dt) and arc length (ang_vel * dt) 
-    // and the value of the linear and angular velocity to use gives us the area 
+    // want to compute distance traveled (vel * dt) and arc length (ang_vel * dt)
+    // and the value of the linear and angular velocity to use gives us the area
     // of the trapezoid in the v-t space when we multiply by dt
     const float v_mid = (robot_vel_.norm() + cmd_v) / 2.0f;
     const float omega_mid = (robot_omega_ + cmd_omega) / 2.0f;
@@ -283,6 +294,10 @@ void Navigation::ForwardPredict(double time) {
 void Navigation::Run() {
   // This function gets called 20 times a second to form the control loop.
 
+  // if (FLAGS_TestMapLoading) {
+  //   viz_pub_.publish(occ_viz_msg_);
+  // }
+
   // Clear previous visualizations.
   visualization::ClearVisualizationMsg(local_viz_msg_);
   visualization::ClearVisualizationMsg(global_viz_msg_);
@@ -297,6 +312,14 @@ void Navigation::Run() {
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
     cout << "RUN" << endl;
+
+    // Check if the car needs to plan a new navigation path
+
+    // Pass start and goal location to astar -> path in map frame
+
+    // Project the carrot to base_link frame
+
+    // 1DTOC with the converted carrot
 
     if (FLAGS_Test1DTOC) {
       test1DTOC();

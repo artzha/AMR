@@ -29,6 +29,7 @@
 #include "amrl_msgs/VisualizationMsg.h"
 #include "constant_curvature_arc.h"
 #include "eigen3/Eigen/Dense"
+#include "navigation/occupancy_map.h"
 #include "navigation_params.h"
 #include "ros/ros.h"
 #include "ros/ros_helpers.h"
@@ -95,7 +96,7 @@ class Navigation {
 
   // Main function called continously from main
   void Run();
-  
+
   // Used to set the next target pose.
   void SetNavGoal(const Eigen::Vector2f& loc, float angle);
   // Used to set autonomy status
@@ -109,7 +110,7 @@ class Navigation {
 
   // Autonomy
   bool autonomy_enabled_;
-  
+
   bool odom_initialized_;
   bool localization_initialized_;
 
@@ -135,8 +136,8 @@ class Navigation {
   std::deque<Command> command_history_;
 
   // Latest observed point cloud.
-  std::vector<Eigen::Vector2f> point_cloud_;  // base_link frame
-  std::vector<Eigen::Vector2f> fp_point_cloud_; // forward predicted base_link frame
+  std::vector<Eigen::Vector2f> point_cloud_;     // base_link frame
+  std::vector<Eigen::Vector2f> fp_point_cloud_;  // forward predicted base_link frame
   double t_point_cloud_;
 
   // Whether navigation is complete.
@@ -146,10 +147,11 @@ class Navigation {
   // Navigation goal angle.
   float nav_goal_angle_;
 
+  // Occupancy map
+  OccupancyMap occ_map_;
+
   // Ackermann Path Sampler object
   motion_primitives::AckermannSampler ackermann_sampler_;
-
-  
 
   void test1DTOC();
 

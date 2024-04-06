@@ -185,6 +185,7 @@ void LoadConfig(navigation::NavigationParams& params) {
   REAL_PARAM(lidar_offset);
   REAL_PARAM(resolution);
   REAL_PARAM(robotRadius);
+  REAL_PARAM(waypoints_coeff);
 
   config_reader::ConfigReader reader({FLAGS_nav_config});
   params.dt = CONFIG_dt;
@@ -207,6 +208,7 @@ void LoadConfig(navigation::NavigationParams& params) {
   params.lidar_offset = CONFIG_lidar_offset;
   params.resolution = CONFIG_resolution;
   params.robotRadius = CONFIG_robotRadius;
+  params.waypoints_coeff = CONFIG_waypoints_coeff;
 }
 
 int main(int argc, char** argv) {

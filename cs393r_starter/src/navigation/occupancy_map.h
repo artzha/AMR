@@ -69,7 +69,12 @@ class OccupancyMap {
 
   const std::vector<std::vector<bool>>& getGrid() const { return grid; }
 
-  bool isOccupied(const Eigen::Vector2i& idx) const { return grid[idx.y()][idx.x()]; }
+  bool isOccupied(const Eigen::Vector2i& idx) const {
+    if (idx.x() < 0 || idx.y() < 0 || idx.x() >= mapWidth || idx.y() >= mapHeight) {
+      return true;
+    }
+    return grid[idx.y()][idx.x()];
+  }
 
   int getWidth() const { return mapWidth; }
   int getHeight() const { return mapHeight; }

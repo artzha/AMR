@@ -28,6 +28,8 @@
 
 namespace visualization {
 
+uint32_t RGB2INT(uint8_t r, uint8_t g, uint8_t b);
+
 // Clear all elements in the message.
 void ClearVisualizationMsg(amrl_msgs::VisualizationMsg& msg);
 

@@ -75,7 +75,8 @@ Navigation::Navigation(const string& map_name,
       robot_angle_(0),
       nav_complete_(true),
       nav_goal_loc_(0, 0),
-      nav_goal_angle_(0) {
+      nav_goal_angle_(0),
+      need_plan_(false) {
   map_.Load(GetMapFileFromName(map_name));
   occ_map_ = OccupancyMap(map_.lines, params);
 
@@ -101,6 +102,7 @@ Navigation::Navigation(const string& map_name,
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
+  need_plan_ = true;
 }
 
 void Navigation::SetAutonomy(bool autonomy_enabled) {
@@ -298,19 +300,101 @@ void Navigation::ForwardPredict(double time) {
 
 void Navigation::Plan() {
   std::cout << "============= [Navigation] Plan =============" << std::endl;
-  std::cout << "Start loc: " << odom_loc_.transpose() << std::endl;
+  std::cout << "Start loc: " << robot_loc_.transpose() << std::endl;
   std::cout << "Goal loc: " << nav_goal_loc_.transpose() << std::endl;
+  visualization::ClearVisualizationMsg(planning_viz_msg_);
 
-  // if (FLAGS_TestAStar) {
-  // }
   AStar astar(occ_map_);
-  Eigen::Vector2f start_loc(-10.5, 19);
-  Eigen::Vector2f goal_loc(-10.1, 4.7);
-  const std::vector<Eigen::Vector2f> path = astar.findPath(start_loc, goal_loc);
+  const std::vector<Eigen::Vector2f> path = astar.findPath(robot_loc_, nav_goal_loc_);
 
-  visualization::ClearVisualizationMsg(
-      planning_viz_msg_);                  // clear vis message after publishing
+  if (path.empty()) {
+    std::cout << "No path found" << std::endl;
+    return;
+  }
+
+  // Select Waypoints uniformly along path, making sure to always include last point
+  waypoints_.clear();
+  float min_dist_waypoints = params_.waypoints_coeff * 1.0f / params_.max_curvature;
+
+  float accumulatedDistance = 0.0f;  // Initialize accumulated distance
+  Eigen::Vector2f lastWaypoint = path.front();
+  for (size_t i = 1; i < path.size(); ++i) {
+    accumulatedDistance += (path[i] - path[i - 1]).norm();
+
+    // Check if the accumulated distance since the last waypoint is greater than the
+    // minimum
+    if (accumulatedDistance > min_dist_waypoints) {
+      waypoints_.push_back(path[i]);
+      accumulatedDistance = 0.0f;  // Reset accumulated distance
+      lastWaypoint = path[i];      // Update the last added waypoint
+      visualization::DrawCross(path[i], 0.1, 62762, planning_viz_msg_);
+    }
+  }
+  // Ensure the last point is always included, if not already the last added waypoint
+  if (lastWaypoint != path.back()) {
+    waypoints_.push_back(path.back());
+    visualization::DrawCross(path.back(), 0.1, 62762, planning_viz_msg_);
+  }
+
   astar.visualization(planning_viz_msg_);  // Visualize the A* search (optional)
+  currCarrotIdx_ = 0;
+}
+
+bool Navigation::updateCarrot() {
+  // Loop through carrots until we find one that meets the following conditions
+  // 1. The carrot is kinematically feasible
+  // 2. current robot location is within a certain distance of the carrot
+  //      - use larger error distance for intermediate carrots
+  //      - use smaller error distance for final carrot
+  if (waypoints_.empty()) {
+    std::cout << "No waypoints to follow" << std::endl;
+    return false;
+  }
+
+  // Computations are in robot frame
+  int carrotIdx = currCarrotIdx_;
+
+  // Check if the current carrot is kinematically feasible
+  const float min_radius = 1.0 / params_.max_curvature;
+  const Vector2f leftICmin(0, min_radius);
+  const Vector2f rightICmin(0, -min_radius);
+
+  Eigen::Affine2f robot_tf =
+      Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
+  Eigen::Affine2f extrinsic_tf = robot_tf.inverse();
+
+  // Eigen::Translation2f(-robot_loc_) * Eigen::Rotation2Df(-robot_angle_);
+
+  while (currCarrotIdx_ < static_cast<int>(waypoints_.size())) {
+    localCarrot_ = extrinsic_tf * waypoints_[currCarrotIdx_];
+
+    // Case 1: Kinematically infeasible
+    bool kinematically_feasible = (localCarrot_ - leftICmin).norm() > min_radius &&
+                                  (localCarrot_ - rightICmin).norm() > min_radius;
+
+    std::cout << (localCarrot_ - leftICmin).norm() << " "
+              << (localCarrot_ - rightICmin).norm() << " " << min_radius << std::endl;
+
+    // Case 2: Close enough to current carrot
+    bool is_far_enough = localCarrot_.norm() > params_.carrot_distance;
+
+    // If either case is true, use current carrot
+    if (kinematically_feasible || is_far_enough) {
+      visualization::DrawCross(waypoints_[currCarrotIdx_],
+                               0.3,
+                               visualization::RGB2INT(255, 0, 0),
+                               planning_viz_msg_);
+      visualization::DrawCross(
+          localCarrot_, 0.5, visualization::RGB2INT(0, 255, 255), local_viz_msg_);
+      return carrotIdx != currCarrotIdx_;  // Return true if we have updated the carrot
+    }
+
+    ++currCarrotIdx_;
+  }
+
+  // Should only reach here once we have reached the final carrot
+  std::cout << "Reached final carrot" << std::endl;
+  return false;
 }
 
 void Navigation::Run() {
@@ -334,27 +418,28 @@ void Navigation::Run() {
     // Predict laserscan and robot's odom state
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
-    cout << "RUN" << endl;
-
-    static bool plan = false;
     // Check if the car needs to plan a new navigation path
-    if (!plan) {
+    if (need_plan_) {
       Plan();
-      plan = true;
+      need_plan_ = false;
     }
 
-    // Pass start and goal location to astar -> path in map frame
-
-    // Project the carrot to base_link frame
+    // Pick the next carroy
+    updateCarrot();
 
     // 1DTOC with the converted carrot
+    followCarrot(drive_msg_);
 
-    if (FLAGS_Test1DTOC) {
-      test1DTOC();
-    }
-    if (FLAGS_TestSamplePaths) {
-      testSamplePaths(drive_msg_);
-    }
+    // Check if goal is reached
+
+    // TODO: drive_msg_.velocity = 0; when reach the goal
+
+    // if (FLAGS_Test1DTOC) {
+    //   test1DTOC();
+    // }
+    // if (FLAGS_TestSamplePaths) {
+    //   testSamplePaths(drive_msg_);
+    // }
 
     drive_msg_.header.stamp = ros::Time::now();
     drive_pub_.publish(drive_msg_);
@@ -375,6 +460,46 @@ void Navigation::Run() {
   viz_pub_.publish(local_viz_msg_);
   viz_pub_.publish(global_viz_msg_);
 }  // namespace navigation
+
+void Navigation::followCarrot(AckermannCurvatureDriveMsg& drive_msg) {
+  if (waypoints_.empty()) {
+    return;
+  }
+
+  auto ackermann_sampler_ = motion_primitives::AckermannSampler(params_);
+  ackermann_sampler_.update(robot_vel_, robot_omega_, localCarrot_, point_cloud_);
+  auto paths = ackermann_sampler_.getSamples(50);
+
+  auto ackermann_evaluator_ = motion_primitives::AckermannEvaluator(params_);
+  ackermann_evaluator_.update(localCarrot_);
+  auto best_path = ackermann_evaluator_.findBestPath(paths);
+  best_path->getControlOnCurve(
+      params_.linear_limits, robot_vel_.norm(), params_.dt, drive_msg.velocity);
+  drive_msg.curvature = best_path->curvature();
+
+  // Visualize paths
+  // int idx = 0;
+  for (auto path : paths) {
+    visualization::DrawPathOption(path->curvature(),
+                                  path->arc_length(),
+                                  path->clearance(),
+                                  32762,
+                                  false,
+                                  local_viz_msg_);
+    // cout << "idx: " << idx++ <<  ", Curvature: " << path->curvature() << " Arc
+    // Length: " << path->arc_length()
+    //      << " Clearance: " << path->clearance() << endl;
+  }
+
+  visualization::DrawPathOption(best_path->curvature(),
+                                best_path->arc_length(),
+                                best_path->clearance(),
+                                10000,
+                                false,
+                                local_viz_msg_);
+
+  return;
+}
 
 void Navigation::test1DTOC() {
   float c = 0;

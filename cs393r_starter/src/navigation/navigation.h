@@ -104,6 +104,10 @@ class Navigation {
 
   void Plan();
 
+  bool updateCarrot();
+
+  void followCarrot(AckermannCurvatureDriveMsg& drive_msg);
+
  private:
   // Map of the environment.
   vector_map::VectorMap map_;
@@ -148,6 +152,12 @@ class Navigation {
   Eigen::Vector2f nav_goal_loc_;
   // Navigation goal angle.
   float nav_goal_angle_;
+
+  // Planning
+  bool need_plan_;
+  std::vector<Eigen::Vector2f> waypoints_;
+  int currCarrotIdx_;
+  Eigen::Vector2f localCarrot_;
 
   // Occupancy map
   OccupancyMap occ_map_;

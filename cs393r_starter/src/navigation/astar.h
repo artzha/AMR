@@ -1,6 +1,7 @@
 #ifndef ASTAR_H
 #define ASTAR_H
 
+#include <memory>
 #include <set>
 #include <unordered_map>
 
@@ -11,7 +12,7 @@ namespace navigation {
 
 struct Node {
   Eigen::Vector2i position;
-  Node* parent;
+  std::shared_ptr<Node> parent;
   float gCost;                                   // Cost from start to the current node
   float hCost;                                   // Heuristic cost estimate to goal
   float fCost() const { return gCost + hCost; }  // Total cost
@@ -69,7 +70,6 @@ class AStar {
       openSet.erase(openSet.begin());
 
       if (current.position == goalIdx) {
-        std::cout << "Found path at " << current.position << std::endl;
         // Saves last found path
         path_ = ReconstructPath(current);
         return path_;
@@ -84,7 +84,7 @@ class AStar {
         if (allNodes_.find(neighborPos) == allNodes_.end() ||
             tentativeGCost < allNodes_[neighborPos].gCost) {
           Node neighbor{neighborPos,
-                        new Node(current),
+                        std::make_shared<Node>(current),
                         tentativeGCost,
                         HeuristicCost(neighborPos, goalIdx)};
           openSet.insert(neighbor);
@@ -118,8 +118,6 @@ class AStar {
 
     std::cout << "number of path nodes: " << path_.size() << std::endl;
     for (size_t i = 1; i < path_.size(); ++i) {
-      std::cout << "Drawing line from " << path_[i - 1].transpose() << " to "
-                << path_[i].transpose() << std::endl;
       visualization::DrawLine(path_[i - 1], path_[i], path_color, global_msg);
     }
   }
@@ -140,7 +138,7 @@ class AStar {
 
   std::vector<Eigen::Vector2f> ReconstructPath(const Node& goalNode) const {
     std::vector<Eigen::Vector2f> path;
-    const Node* current = &goalNode;
+    std::shared_ptr<Node> current = std::make_shared<Node>(goalNode);
     while (current != nullptr) {
       path.push_back(map_.getPose(current->position.x(), current->position.y()));
       current = current->parent;
@@ -149,7 +147,7 @@ class AStar {
 
     if (FLAGS_v > 1) {
       std::cout << "Path: ";
-      for (const auto& p : path) {
+      for (const auto& p : path_) {
         std::cout << p.transpose() << " ";
       }
       std::cout << std::endl;

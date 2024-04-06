@@ -29,7 +29,10 @@ struct NavigationParams {
         obstacle_margin(0.5),
         lidar_offset(0.5),
         resolution(0.5),
-        robotRadius(0.3) {}
+        robotRadius(0.3),
+        waypoints_coeff(2),
+        carrot_distance(2.0),
+        goal_distance(0.5) {}
 
   double dt;
   double system_latency;
@@ -57,6 +60,10 @@ struct NavigationParams {
 
   float resolution;
   float robotRadius;
+
+  float waypoints_coeff;
+  float carrot_distance;
+  float goal_distance;
 };
 }  // namespace navigation
 #endif  // NAVIGATION_PARAMS_H

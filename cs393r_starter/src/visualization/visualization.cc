@@ -19,26 +19,26 @@
 */
 //========================================================================
 
+#include "visualization.h"
+
 #include <algorithm>
 #include <string>
 
-#include "eigen3/Eigen/Dense"
-#include "amrl_msgs/Pose2Df.h"
 #include "amrl_msgs/ColoredArc2D.h"
 #include "amrl_msgs/ColoredLine2D.h"
 #include "amrl_msgs/ColoredPoint2D.h"
+#include "amrl_msgs/Pose2Df.h"
 #include "amrl_msgs/VisualizationMsg.h"
+#include "eigen3/Eigen/Dense"
 #include "ros/ros.h"
 
-#include "visualization.h"
-
-using Eigen::Rotation2Df;
-using Eigen::Vector2f;
 using amrl_msgs::ColoredArc2D;
 using amrl_msgs::ColoredLine2D;
 using amrl_msgs::ColoredPoint2D;
 using amrl_msgs::Pose2Df;
 using amrl_msgs::VisualizationMsg;
+using Eigen::Rotation2Df;
+using Eigen::Vector2f;
 using std::max;
 using std::string;
 
@@ -53,6 +53,16 @@ void SetPoint(const T1& p1, T2* p2) {
 
 namespace visualization {
 
+uint32_t RGB2INT(uint8_t r, uint8_t g, uint8_t b) {
+  uint32_t c;
+  c = r;
+  c <<= 8;
+  c |= g;
+  c <<= 8;
+  c |= b;
+  return c;
+}
+
 // Clear all elements in the message.
 void ClearVisualizationMsg(VisualizationMsg& msg) {
   msg.points.clear();
@@ -61,8 +71,8 @@ void ClearVisualizationMsg(VisualizationMsg& msg) {
 }
 
 // Return new visualization message, with initialized headers and namespace.
-amrl_msgs::VisualizationMsg NewVisualizationMessage(
-    const string& frame, const string& ns) {
+amrl_msgs::VisualizationMsg NewVisualizationMessage(const string& frame,
+                                                    const string& ns) {
   VisualizationMsg msg;
   msg.header.frame_id = frame;
   msg.header.seq = 0;
@@ -92,14 +102,10 @@ void DrawCross(const Eigen::Vector2f& location,
                float size,
                uint32_t color,
                VisualizationMsg& msg) {
-  DrawLine(location + Vector2f(size, size),
-           location - Vector2f(size, size),
-           color,
-           msg);
-  DrawLine(location + Vector2f(size, -size),
-           location - Vector2f(size, -size),
-           color,
-           msg);
+  DrawLine(
+      location + Vector2f(size, size), location - Vector2f(size, size), color, msg);
+  DrawLine(
+      location + Vector2f(size, -size), location - Vector2f(size, -size), color, msg);
 }
 
 void DrawArc(const Vector2f& center,
@@ -120,7 +126,7 @@ void DrawArc(const Vector2f& center,
 void DrawParticle(const Vector2f& loc,
                   float angle,
                   VisualizationMsg& msg,
-                  uint32_t color=0x40FF0000) {
+                  uint32_t color = 0x40FF0000) {
   DrawArc(loc, 0.1, -M_PI, M_PI, color, msg);
   DrawLine(loc, loc + Rotation2Df(angle) * Vector2f(0.2, 0), color, msg);
 }
@@ -136,10 +142,8 @@ void DrawPathOption(const float curvature,
   if (fabs(curvature) < 0.001) {
     DrawLine(Vector2f(0, 0), Vector2f(distance, 0), color, msg);
     if (show_clearance) {
-      DrawLine(
-          Vector2f(0, clearance), Vector2f(distance, clearance), color, msg);
-      DrawLine(
-          Vector2f(0, -clearance), Vector2f(distance, -clearance), color, msg);
+      DrawLine(Vector2f(0, clearance), Vector2f(distance, clearance), color, msg);
+      DrawLine(Vector2f(0, -clearance), Vector2f(distance, -clearance), color, msg);
     }
   } else {
     const float r = 1.0f / curvature;

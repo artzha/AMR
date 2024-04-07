@@ -447,9 +447,10 @@ void Navigation::Run() {
     need_plan_ = false;
   }
 
+  ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
+
   if (FLAGS_simulation || autonomy_enabled_) {
     // Predict laserscan and robot's odom state
-    ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
     // If we have waypoints, check if path is clear
     if (!waypoints_.empty() && occ_map_updated_) {

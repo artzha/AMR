@@ -428,6 +428,11 @@ void Navigation::Run() {
     return;
   }
 
+  if (need_plan_) {
+    Plan();
+    need_plan_ = false;
+  }
+
   if (FLAGS_simulation || autonomy_enabled_) {
     // Predict laserscan and robot's odom state
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
@@ -442,24 +447,16 @@ void Navigation::Run() {
       }
     }
 
-    // Check if the car needs to plan a new navigation path
-    if (need_plan_) {
-      Plan();
-      need_plan_ = false;
-    }
-
     // Pick the next carroy
     RunState state = updateCarrot();
-    if (state == RunState::GOAL_REACHED) {
-      std::cout << "State: Goal Reached" << std::endl;
+
+    if (state == RunState::GOAL_REACHED || state == RunState::IDLE) {
+      drive_msg_.velocity = 0;
+      drive_msg_.curvature = 0;
+    } else {
+      // 1DTOC with the converted carrot
+      followCarrot(drive_msg_);
     }
-    // if (state == RunState::GOAL_REACHED || state == RunState::IDLE) {
-    //   drive_msg_.velocity = 0;
-    //   drive_msg_.curvature = 0;
-    // } else {
-    //   // 1DTOC with the converted carrot
-    //   followCarrot(drive_msg_);
-    // }
 
     // if (FLAGS_Test1DTOC) {
     //   test1DTOC();

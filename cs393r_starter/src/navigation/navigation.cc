@@ -40,7 +40,7 @@
 DEFINE_bool(simulation, false, "Run in simulation mode");
 DEFINE_bool(Test1DTOC, false, "Run 1D line time-optimal controller test");
 DEFINE_bool(TestSamplePaths, false, "Run sample paths test");
-DEFINE_bool(TestMapLoading, true, "Run occupancy map loading test");
+DEFINE_bool(TestMapLoading, false, "Run occupancy map loading test");
 DEFINE_bool(TestAStar, true, "Run A* test");
 
 namespace {
@@ -197,8 +197,10 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   }
   occ_map_.updateOccupancy(robot_loc_, global_cloud);
   occ_map_updated_ = true;
-  visualization::ClearVisualizationMsg(occupancy_viz_msg_);
-  occ_map_.visualization(occupancy_viz_msg_);
+  if (FLAGS_TestMapLoading) {
+    visualization::ClearVisualizationMsg(occupancy_viz_msg_);
+    occ_map_.visualization(occupancy_viz_msg_);
+  }
 
   last_updated_time = time;
 }
@@ -424,7 +426,7 @@ RunState Navigation::updateCarrot() {
 void Navigation::Run() {
   static double t_last = 0;
   if (GetMonotonicTime() - t_last >= 1) {  // Publish vis messages at 1 hz
-    viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
+    // viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
     viz_pub_.publish(planning_viz_msg_);
     t_last = GetMonotonicTime();
   }

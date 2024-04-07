@@ -267,8 +267,8 @@ float AckermannEvaluator::evaluatePath(std::shared_ptr<ConstantCurvatureArc> pat
   if (FLAGS_v > 1) {
     cout << "Curvature: " << path->curvature() << ", Arc length: " << path->arc_length()
          << ", End point: (" << path->getEndPoint().transpose() << ")"
-         << ", Clearance: " << path->clearance()
-         << ", dist(target): " << dist_to_target << ", Score: " << score << endl;
+         << ", Clearance: " << path->clearance() << ", dist(target): " << dist_to_target
+         << ", Score: " << score << endl;
   }
   return score;
 }

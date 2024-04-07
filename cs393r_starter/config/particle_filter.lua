@@ -2,7 +2,7 @@ function Vector2(x, y)
     return {x = x, y = y}
   end
 
-map = "GDC1";
+map = "GDC3";
 init_x = 14.7;
 init_y = 14.24;
 init_r = 0; -- in degrees

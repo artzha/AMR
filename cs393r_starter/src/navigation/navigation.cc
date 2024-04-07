@@ -80,6 +80,8 @@ Navigation::Navigation(const string& map_name,
   map_.Load(GetMapFileFromName(map_name));
   occ_map_ = OccupancyMap(map_.lines, params);
 
+  localCarrot_ = Vector2f(0, 0);
+
   drive_pub_ = n->advertise<AckermannCurvatureDriveMsg>("ackermann_curvature_drive", 1);
   viz_pub_ = n->advertise<VisualizationMsg>("visualization", 10);
   local_viz_msg_ =
@@ -177,6 +179,18 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   point_cloud_ = cloud;
   t_point_cloud_ = time;
   PruneCommandQueue();
+
+  // Update occupancy map with new point cloud (cloud, tT_laser_map)
+  Eigen::Affine2f T_laser_map =
+      Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
+
+  std::vector<Vector2f> global_cloud(cloud.size());
+  for (size_t i = 0; i < cloud.size(); i++) {
+    global_cloud[i] = T_laser_map * cloud[i];
+  }
+  occ_map_.updateOccupancy(robot_loc_, global_cloud);
+  visualization::ClearVisualizationMsg(occupancy_viz_msg_);
+  occ_map_.visualization(occupancy_viz_msg_);
 }
 
 void Navigation::UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_msg) {
@@ -305,9 +319,9 @@ void Navigation::Plan() {
   visualization::ClearVisualizationMsg(planning_viz_msg_);
 
   AStar astar(occ_map_);
-  const std::vector<Eigen::Vector2f> path = astar.findPath(robot_loc_, nav_goal_loc_);
+  path_ = astar.findPath(robot_loc_, nav_goal_loc_);
 
-  if (path.empty()) {
+  if (path_.empty()) {
     std::cout << "No path found" << std::endl;
     return;
   }
@@ -317,30 +331,28 @@ void Navigation::Plan() {
   float min_dist_waypoints = params_.waypoints_coeff * 1.0f / params_.max_curvature;
 
   float accumulatedDistance = 0.0f;  // Initialize accumulated distance
-  Eigen::Vector2f lastWaypoint = path.front();
-  for (size_t i = 1; i < path.size(); ++i) {
-    accumulatedDistance += (path[i] - path[i - 1]).norm();
+  Eigen::Vector2f lastWaypoint = path_.front();
+  for (size_t i = 1; i < path_.size(); ++i) {
+    accumulatedDistance += (path_[i] - path_[i - 1]).norm();
 
-    // Check if the accumulated distance since the last waypoint is greater than the
-    // minimum
     if (accumulatedDistance > min_dist_waypoints) {
-      waypoints_.push_back(path[i]);
+      waypoints_.push_back(path_[i]);
       accumulatedDistance = 0.0f;  // Reset accumulated distance
-      lastWaypoint = path[i];      // Update the last added waypoint
-      visualization::DrawCross(path[i], 0.1, 62762, planning_viz_msg_);
+      lastWaypoint = path_[i];     // Update the last added waypoint
+      visualization::DrawCross(path_[i], 0.1, 62762, planning_viz_msg_);
     }
   }
   // Ensure the last point is always included, if not already the last added waypoint
-  if (lastWaypoint != path.back()) {
-    waypoints_.push_back(path.back());
-    visualization::DrawCross(path.back(), 0.1, 62762, planning_viz_msg_);
+  if (lastWaypoint != path_.back()) {
+    waypoints_.push_back(path_.back());
+    visualization::DrawCross(path_.back(), 0.1, 62762, planning_viz_msg_);
   }
 
   astar.visualization(planning_viz_msg_);  // Visualize the A* search (optional)
   currCarrotIdx_ = 0;
 }
 
-bool Navigation::updateCarrot() {
+RunState Navigation::updateCarrot() {
   // Loop through carrots until we find one that meets the following conditions
   // 1. The carrot is kinematically feasible
   // 2. current robot location is within a certain distance of the carrot
@@ -348,22 +360,23 @@ bool Navigation::updateCarrot() {
   //      - use smaller error distance for final carrot
   if (waypoints_.empty()) {
     std::cout << "No waypoints to follow" << std::endl;
-    return false;
+    return RunState::IDLE;
   }
 
   // Computations are in robot frame
-  int carrotIdx = currCarrotIdx_;
-
   // Check if the current carrot is kinematically feasible
   const float min_radius = 1.0 / params_.max_curvature;
   const Vector2f leftICmin(0, min_radius);
   const Vector2f rightICmin(0, -min_radius);
 
+  visualization::DrawCross(
+      leftICmin, 0.1, visualization::RGB2INT(255, 255, 0), local_viz_msg_);
+  visualization::DrawCross(
+      rightICmin, 0.1, visualization::RGB2INT(255, 255, 0), local_viz_msg_);
+
   Eigen::Affine2f robot_tf =
       Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
   Eigen::Affine2f extrinsic_tf = robot_tf.inverse();
-
-  // Eigen::Translation2f(-robot_loc_) * Eigen::Rotation2Df(-robot_angle_);
 
   while (currCarrotIdx_ < static_cast<int>(waypoints_.size())) {
     localCarrot_ = extrinsic_tf * waypoints_[currCarrotIdx_];
@@ -372,21 +385,22 @@ bool Navigation::updateCarrot() {
     bool kinematically_feasible = (localCarrot_ - leftICmin).norm() > min_radius &&
                                   (localCarrot_ - rightICmin).norm() > min_radius;
 
-    std::cout << (localCarrot_ - leftICmin).norm() << " "
-              << (localCarrot_ - rightICmin).norm() << " " << min_radius << std::endl;
-
     // Case 2: Close enough to current carrot
-    bool is_far_enough = localCarrot_.norm() > params_.carrot_distance;
+    bool waypoint_is_goal = currCarrotIdx_ == static_cast<int>(waypoints_.size()) - 1;
+    bool is_far_enough = waypoint_is_goal
+                             ? localCarrot_.norm() > params_.goal_distance
+                             : localCarrot_.norm() > params_.carrot_distance;
 
     // If either case is true, use current carrot
-    if (kinematically_feasible || is_far_enough) {
+    if (kinematically_feasible && is_far_enough) {
       visualization::DrawCross(waypoints_[currCarrotIdx_],
                                0.3,
                                visualization::RGB2INT(255, 0, 0),
                                planning_viz_msg_);
       visualization::DrawCross(
           localCarrot_, 0.5, visualization::RGB2INT(0, 255, 255), local_viz_msg_);
-      return carrotIdx != currCarrotIdx_;  // Return true if we have updated the carrot
+
+      return RunState::RUNNING;
     }
 
     ++currCarrotIdx_;
@@ -394,12 +408,12 @@ bool Navigation::updateCarrot() {
 
   // Should only reach here once we have reached the final carrot
   std::cout << "Reached final carrot" << std::endl;
-  return false;
+  return RunState::GOAL_REACHED;
 }
 
 void Navigation::Run() {
   static double t_last = 0;
-  if (GetMonotonicTime() - t_last >= 5) {  // Publish vis messages at 1 hz
+  if (GetMonotonicTime() - t_last >= 1) {  // Publish vis messages at 1 hz
     viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
     viz_pub_.publish(planning_viz_msg_);
     t_last = GetMonotonicTime();
@@ -418,6 +432,16 @@ void Navigation::Run() {
     // Predict laserscan and robot's odom state
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
+    // If we have waypoints, check if path is clear
+    if (!waypoints_.empty()) {
+      for (const Vector2f& waypoint : path_) {
+        if (occ_map_.isOccupied(waypoint)) {
+          need_plan_ = true;
+          break;
+        }
+      }
+    }
+
     // Check if the car needs to plan a new navigation path
     if (need_plan_) {
       Plan();
@@ -425,14 +449,17 @@ void Navigation::Run() {
     }
 
     // Pick the next carroy
-    updateCarrot();
-
-    // 1DTOC with the converted carrot
-    followCarrot(drive_msg_);
-
-    // Check if goal is reached
-
-    // TODO: drive_msg_.velocity = 0; when reach the goal
+    RunState state = updateCarrot();
+    if (state == RunState::GOAL_REACHED) {
+      std::cout << "State: Goal Reached" << std::endl;
+    }
+    // if (state == RunState::GOAL_REACHED || state == RunState::IDLE) {
+    //   drive_msg_.velocity = 0;
+    //   drive_msg_.curvature = 0;
+    // } else {
+    //   // 1DTOC with the converted carrot
+    //   followCarrot(drive_msg_);
+    // }
 
     // if (FLAGS_Test1DTOC) {
     //   test1DTOC();
@@ -462,10 +489,6 @@ void Navigation::Run() {
 }  // namespace navigation
 
 void Navigation::followCarrot(AckermannCurvatureDriveMsg& drive_msg) {
-  if (waypoints_.empty()) {
-    return;
-  }
-
   auto ackermann_sampler_ = motion_primitives::AckermannSampler(params_);
   ackermann_sampler_.update(robot_vel_, robot_omega_, localCarrot_, point_cloud_);
   auto paths = ackermann_sampler_.getSamples(50);

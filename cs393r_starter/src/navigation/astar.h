@@ -81,6 +81,7 @@ class AStar {
 
         float tentativeGCost =
             current.gCost + (dir.array().abs().sum() == 2 ? M_SQRT2 : 1.0);
+
         if (allNodes_.find(neighborPos) == allNodes_.end() ||
             tentativeGCost < allNodes_[neighborPos].gCost) {
           Node neighbor{neighborPos,

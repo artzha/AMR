@@ -51,6 +51,8 @@ class NodeHandle;
 
 namespace navigation {
 
+enum class RunState { IDLE, RUNNING, GOAL_REACHED };
+
 struct PathOption {
   float curvature;
   float clearance;
@@ -104,7 +106,7 @@ class Navigation {
 
   void Plan();
 
-  bool updateCarrot();
+  RunState updateCarrot();
 
   void followCarrot(AckermannCurvatureDriveMsg& drive_msg);
 
@@ -155,6 +157,7 @@ class Navigation {
 
   // Planning
   bool need_plan_;
+  std::vector<Eigen::Vector2f> path_;
   std::vector<Eigen::Vector2f> waypoints_;
   int currCarrotIdx_;
   Eigen::Vector2f localCarrot_;

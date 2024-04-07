@@ -79,6 +79,7 @@ Navigation::Navigation(const string& map_name,
       need_plan_(false) {
   map_.Load(GetMapFileFromName(map_name));
   occ_map_ = OccupancyMap(map_.lines, params);
+  occ_map_updated_ = false;
 
   localCarrot_ = Vector2f(0, 0);
 
@@ -180,6 +181,12 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   t_point_cloud_ = time;
   PruneCommandQueue();
 
+  static last_updated_time = time;
+
+  if (time - last_updated_time < 1) {
+    return;
+  }
+
   // Update occupancy map with new point cloud (cloud, tT_laser_map)
   Eigen::Affine2f T_laser_map =
       Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
@@ -189,8 +196,11 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
     global_cloud[i] = T_laser_map * cloud[i];
   }
   occ_map_.updateOccupancy(robot_loc_, global_cloud);
+  occ_map_updated_ = true;
   visualization::ClearVisualizationMsg(occupancy_viz_msg_);
   occ_map_.visualization(occupancy_viz_msg_);
+
+  last_updated_time = time;
 }
 
 void Navigation::UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_msg) {
@@ -438,10 +448,11 @@ void Navigation::Run() {
     ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
     // If we have waypoints, check if path is clear
-    if (!waypoints_.empty()) {
+    if (!waypoints_.empty() && occ_map_updated_) {
       for (const Vector2f& waypoint : path_) {
         if (occ_map_.isOccupied(waypoint)) {
           need_plan_ = true;
+          occ_map_updated_ = false;
           break;
         }
       }

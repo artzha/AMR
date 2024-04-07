@@ -164,6 +164,7 @@ class Navigation {
 
   // Occupancy map
   OccupancyMap occ_map_;
+  bool occ_map_updated_;
 
   // Ackermann Path Sampler object
   motion_primitives::AckermannSampler ackermann_sampler_;

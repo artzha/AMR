@@ -183,7 +183,7 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
 
   static double last_updated_time = time;
 
-  if (time - last_updated_time < 1) {
+  if (time - last_updated_time < 0.5) {
     return;
   }
 

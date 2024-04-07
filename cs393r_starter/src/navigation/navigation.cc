@@ -426,7 +426,9 @@ RunState Navigation::updateCarrot() {
 void Navigation::Run() {
   static double t_last = 0;
   if (GetMonotonicTime() - t_last >= 1) {  // Publish vis messages at 1 hz
-    // viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
+    if (FLAGS_TestMapLoading) {
+      viz_pub_.publish(occupancy_viz_msg_);  // Rate-limit visualization.
+    }
     viz_pub_.publish(planning_viz_msg_);
     t_last = GetMonotonicTime();
   }

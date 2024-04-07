@@ -105,12 +105,11 @@ void PublishParticles() {
   particle_filter_.GetParticles(&particles);
   // Scale the color from 0 to max value based on relative particle weight
 
-
   for (const particle_filter::Particle& p : particles) {
     uint8_t red = static_cast<uint8_t>((1 - p.weight) * 255);
     uint8_t green = static_cast<uint8_t>(p.weight * 255);
     uint32_t color = (red << 16) | (green << 8);
-    
+
     DrawParticle(p.loc, p.angle, vis_msg_, color);
   }
 }
@@ -138,16 +137,17 @@ void PublishPredictedScan() {
 
   // // DEBUG downsampled point cloud
   // const uint32_t kSubColor = 0xFF0000;  // Red
-  // size_t num_sub_ranges = size_t(last_laser_msg_.ranges.size() / 10); // CHANGE THIS IF DS Factor CHANGES!
-  // vector<float> sub_ranges(num_sub_ranges);
-  // vector<Vector2f> sub_predicted_scan;
+  // size_t num_sub_ranges = size_t(last_laser_msg_.ranges.size() / 10); // CHANGE THIS
+  // IF DS Factor CHANGES! vector<float> sub_ranges(num_sub_ranges); vector<Vector2f>
+  // sub_predicted_scan;
 
-  // float d_theta = (last_laser_msg_.angle_max - last_laser_msg_.angle_min) / (last_laser_msg_.ranges.size() - 1);
-  // for (size_t i = 0; i < num_sub_ranges; ++i) {
+  // float d_theta = (last_laser_msg_.angle_max - last_laser_msg_.angle_min) /
+  // (last_laser_msg_.ranges.size() - 1); for (size_t i = 0; i < num_sub_ranges; ++i) {
   //   size_t copy_idx = i * 10;
   //   sub_ranges[i] = last_laser_msg_.ranges[copy_idx];
   // }
-  // float new_angle_max = last_laser_msg_.angle_min + d_theta * 10 * (num_sub_ranges - 1) ;
+  // float new_angle_max = last_laser_msg_.angle_min + d_theta * 10 * (num_sub_ranges -
+  // 1) ;
 
   // particle_filter_.GetPredictedPointCloud(robot_loc,
   //                                         robot_angle,
@@ -164,9 +164,8 @@ void PublishPredictedScan() {
   // // Draw lines between original and downsampled point cloud corresopndences
   // for (size_t i = 0; i < num_sub_ranges; ++i) {
   //   size_t ds_idx = i * 10;
-  //   DrawLine(predicted_scan[ds_idx], sub_predicted_scan[i], 0x000000, vis_msg_); 
+  //   DrawLine(predicted_scan[ds_idx], sub_predicted_scan[i], 0x000000, vis_msg_);
   // }
-
 }
 
 void PublishTrajectory() {
@@ -255,7 +254,6 @@ void LaserCallback(const sensor_msgs::LaserScan& msg) {
   //                                         last_laser_msg_.angle_max,
   //                                         predicted_scan);
   // // Get Observed Point cloud
-  
 
   if (FLAGS_v > 1) {
     cout << "============ [Particle Filter Main] LaserCallback ============" << endl;
@@ -352,6 +350,9 @@ int main(int argc, char** argv) {
   localization_publisher_ =
       n.advertise<amrl_msgs::Localization2DMsg>("localization", 1);
   // laser_publisher_ = n.advertise<sensor_msgs::LaserScan>("scan", 1);
+
+  static CumulativeFunctionTimer mainTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&mainTimer_);
 
   ProcessLive(&n);
 

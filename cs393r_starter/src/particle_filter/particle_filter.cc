@@ -84,6 +84,7 @@ void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
                                             vector<Vector2f>& scan) {
   static CumulativeFunctionTimer function_timer_(__FUNCTION__);
   CumulativeFunctionTimer::Invocation invoke(&function_timer_);
+
   // Compute what the predicted point cloud would be, if the car was at the pose
   // loc, angle, with the sensor characteristics defined by the provided
   // parameters.
@@ -101,10 +102,11 @@ void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
 
   // Note: The returned values must be set using the `scan` variable:
   scan.resize(num_ranges);
+  float angle_increment = (angle_max - angle_min) / (num_ranges - 1);
   // Fill in the entries of scan using array writes, e.g. scan[i] = ...
   for (size_t i = 0; i < scan.size(); ++i) {
     // define endpoint of ray line segment relative to world frame
-    float theta = angle_min + i * (angle_max - angle_min) / (num_ranges - 1);
+    float theta = angle_min + i * angle_increment;
     scan[i] = T_robot * (Vector2f(range_max * cos(theta), range_max * sin(theta)) +
                          kLaserLoc);  // world frame
   }
@@ -113,15 +115,13 @@ void ParticleFilter::GetPredictedPointCloud(const Vector2f& loc,
   // can iterate through them as:
   vector<float> ranges(num_ranges, range_max);
   for (size_t i = 0; i < scan.size(); ++i) {
-    for (size_t j = 0; j < map_.lines.size(); ++j) {
-      const line2f map_line = map_.lines[j];
+    for (const auto& map_line : map_.lines) {
       // Construct line segment in world frame
       line2f my_line(loc.x(), loc.y(), scan[i].x(), scan[i].y());
 
       // Check for intersection
       Vector2f intersection_point;  // Return variable
-      bool intersects = map_line.Intersection(my_line, &intersection_point);
-      if (intersects) {
+      if (map_line.Intersection(my_line, &intersection_point)) {
         // NOTE: se2 transformations preserve distances between between points
         float new_range =
             (intersection_point - loc).norm();  // compute range in world frame
@@ -145,6 +145,9 @@ void ParticleFilter::Update(const vector<float>& observed_ranges,
   // observations for each particle, and assign weights to the particles based
   // on the observation likelihood computed by relating the observation to the
   // predicted point cloud.
+  static CumulativeFunctionTimer updateTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&updateTimer_);
+
   vector<Vector2f> predicted_scan;  // world frame
 
   GetPredictedPointCloud(p_ptr->loc,
@@ -293,7 +296,7 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
     size_t copy_idx = i * CONFIG_ds_factor;
     sub_ranges[i] = ranges[copy_idx];
   }
-  float new_angle_max = angle_min + d_theta * CONFIG_ds_factor * (num_sub_ranges - 1) ;
+  float new_angle_max = angle_min + d_theta * CONFIG_ds_factor * (num_sub_ranges - 1);
 
   if (FLAGS_v > 2) {
     cout << "============= [Particle Filter] Downsample Scans ================" << endl;

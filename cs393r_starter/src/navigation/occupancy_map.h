@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "shared/math/line2d.h"
+#include "shared/util/timer.h"
 #include "visualization/visualization.h"
 
 #define MAX_INT8 (int8_t)127
@@ -86,13 +87,9 @@ class OccupancyMap {
 
   void updateOccupancy(const Eigen::Vector2f& loc,
                        const std::vector<Eigen::Vector2f>& points) {
-    // for (const auto& point : points) {
-    //   auto [xIdx, yIdx] = getIdx(point.x(), point.y());
-    //   if (xIdx < 0 || yIdx < 0 || xIdx >= mapWidth || yIdx >= mapHeight) {
-    //     continue;
-    //   }
-    //   grid[yIdx][xIdx] = true;
-    // }
+    static CumulativeFunctionTimer updateOccupancyTimer_(__FUNCTION__);
+    CumulativeFunctionTimer::Invocation invoke(&updateOccupancyTimer_);
+
     auto [rxIdx, ryIdx] = getIdx(loc.x(), loc.y());
 
     for (size_t i = 0; i < points.size(); i += 3) {

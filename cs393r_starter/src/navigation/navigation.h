@@ -106,6 +106,8 @@ class Navigation {
 
   void Plan();
 
+  bool checkPathValidity();
+
   RunState updateCarrot();
 
   void followCarrot(AckermannCurvatureDriveMsg& drive_msg);
@@ -156,7 +158,7 @@ class Navigation {
   float nav_goal_angle_;
 
   // Planning
-  bool need_plan_;
+  bool goal_initialized_;
   std::vector<Eigen::Vector2f> path_;
   std::vector<Eigen::Vector2f> waypoints_;
   int currCarrotIdx_;

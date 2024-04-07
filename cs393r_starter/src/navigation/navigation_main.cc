@@ -233,6 +233,9 @@ int main(int argc, char** argv) {
   ros::Subscriber goto_sub = n.subscribe("/move_base_simple/goal", 1, &GoToCallback);
   ros::Subscriber autonomy_sub = n.subscribe("/autonomy_enabler", 1, &AutonomyCallback);
 
+  static CumulativeFunctionTimer mainTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&mainTimer_);
+
   RateLoop loop(20.0);
   while (run_ && ros::ok()) {
     ros::spinOnce();

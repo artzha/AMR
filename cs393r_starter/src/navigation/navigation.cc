@@ -76,7 +76,7 @@ Navigation::Navigation(const string& map_name,
       nav_complete_(true),
       nav_goal_loc_(0, 0),
       nav_goal_angle_(0),
-      need_plan_(false) {
+      goal_initialized_(false) {
   map_.Load(GetMapFileFromName(map_name));
   occ_map_ = OccupancyMap(map_.lines, params);
   occ_map_updated_ = false;
@@ -105,7 +105,12 @@ Navigation::Navigation(const string& map_name,
 void Navigation::SetNavGoal(const Vector2f& loc, float angle) {
   nav_goal_loc_ = loc;
   nav_goal_angle_ = angle;
-  need_plan_ = true;
+
+  goal_initialized_ = true;
+  path_.clear();
+  waypoints_.clear();
+  currCarrotIdx_ = 0;
+  localCarrot_ = Vector2f(0, 0);
 }
 
 void Navigation::SetAutonomy(bool autonomy_enabled) {
@@ -172,18 +177,23 @@ void Navigation::UpdateOdometry(
 }
 
 void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
+  static CumulativeFunctionTimer observePointCloudTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&observePointCloudTimer_);
+
   if (FLAGS_v > 0) {
     cout << "=============== [Navigation] UPDATE POINTCLOUD ===============" << endl;
-    cout << "cloud size: " << cloud.size() << " time: " << time << endl;
+    cout << "cloud size: " << cloud.size() << " time: " << std::fixed
+         << std::setprecision(6) << time << endl;
     cout << "==============================================================\n" << endl;
   }
+
   point_cloud_ = cloud;
   t_point_cloud_ = time;
   PruneCommandQueue();
 
   static double last_updated_time = time;
 
-  if (time - last_updated_time < 0.5) {
+  if (time - last_updated_time < 0.2) {
     return;
   }
 
@@ -214,6 +224,9 @@ void Navigation::UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_ms
 }
 
 void Navigation::ForwardPredict(double time) {
+  static CumulativeFunctionTimer forwardPredictTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&forwardPredictTimer_);
+
   if (FLAGS_v > 1) {
     cout << "================ [Navigation] FORWARD PREDICT ================" << endl;
     cout << "forward time: " << time << endl;
@@ -325,9 +338,13 @@ void Navigation::ForwardPredict(double time) {
 }
 
 void Navigation::Plan() {
+  static CumulativeFunctionTimer planTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&planTimer_);
+
   std::cout << "============= [Navigation] Plan =============" << std::endl;
   std::cout << "Start loc: " << robot_loc_.transpose() << std::endl;
   std::cout << "Goal loc: " << nav_goal_loc_.transpose() << std::endl;
+
   visualization::ClearVisualizationMsg(planning_viz_msg_);
 
   AStar astar(occ_map_);
@@ -370,8 +387,10 @@ RunState Navigation::updateCarrot() {
   // 2. current robot location is within a certain distance of the carrot
   //      - use larger error distance for intermediate carrots
   //      - use smaller error distance for final carrot
+  static CumulativeFunctionTimer updateCarrotTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&updateCarrotTimer_);
+
   if (waypoints_.empty()) {
-    std::cout << "No waypoints to follow" << std::endl;
     return RunState::IDLE;
   }
 
@@ -420,7 +439,22 @@ RunState Navigation::updateCarrot() {
 
   // Should only reach here once we have reached the final carrot
   std::cout << "Reached final carrot" << std::endl;
+  goal_initialized_ = false;
   return RunState::GOAL_REACHED;
+}
+
+bool Navigation::checkPathValidity() {
+  if (waypoints_.empty() || !occ_map_updated_) return true;
+  occ_map_updated_ = false;
+
+  static CumulativeFunctionTimer checkPathValidityTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&checkPathValidityTimer_);
+
+  for (const Vector2f& waypoint : path_) {
+    if (occ_map_.isOccupied(waypoint)) return false;
+  }
+
+  return true;
 }
 
 void Navigation::Run() {
@@ -442,30 +476,20 @@ void Navigation::Run() {
     return;
   }
 
-  if (need_plan_) {
+  static CumulativeFunctionTimer runTimer_(__FUNCTION__);
+  CumulativeFunctionTimer::Invocation invoke(&runTimer_);
+
+  if (goal_initialized_ && (path_.empty() || !checkPathValidity())) {
     Plan();
-    need_plan_ = false;
   }
 
+  // Pick the next carroy
+  RunState state = updateCarrot();
+
+  // Predict laserscan and robot's odom state
   ForwardPredict(ros::Time::now().toSec() + params_.system_latency);
 
   if (FLAGS_simulation || autonomy_enabled_) {
-    // Predict laserscan and robot's odom state
-
-    // If we have waypoints, check if path is clear
-    if (!waypoints_.empty() && occ_map_updated_) {
-      for (const Vector2f& waypoint : path_) {
-        if (occ_map_.isOccupied(waypoint)) {
-          need_plan_ = true;
-          occ_map_updated_ = false;
-          break;
-        }
-      }
-    }
-
-    // Pick the next carroy
-    RunState state = updateCarrot();
-
     if (state == RunState::GOAL_REACHED || state == RunState::IDLE) {
       drive_msg_.velocity = 0;
       drive_msg_.curvature = 0;

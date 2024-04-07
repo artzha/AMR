@@ -37,6 +37,9 @@ class AStar {
 
   std::vector<Eigen::Vector2f> findPath(const Eigen::Vector2f& start,
                                         const Eigen::Vector2f& goal) {
+    static CumulativeFunctionTimer findPathTimer_(__FUNCTION__);
+    CumulativeFunctionTimer::Invocation invoke(&findPathTimer_);
+
     start_ = start;
     goal_ = goal;
     path_.clear();

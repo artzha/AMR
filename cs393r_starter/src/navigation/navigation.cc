@@ -181,7 +181,7 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   t_point_cloud_ = time;
   PruneCommandQueue();
 
-  static last_updated_time = time;
+  static double last_updated_time = time;
 
   if (time - last_updated_time < 1) {
     return;

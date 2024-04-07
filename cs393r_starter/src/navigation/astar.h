@@ -112,8 +112,8 @@ class AStar {
 
     std::cout << "number of all nodes: " << allNodes_.size() << std::endl;
 
-    for (const auto& [_, node] : allNodes_) {
-      const auto& pose = map_.getPose(node.position.x(), node.position.y());
+    for (const auto& it : allNodes_) {
+      const auto& pose = map_.getPose(it.first.x(), it.first.y());
       visualization::DrawPoint(pose, 62762, global_msg);
     }
 

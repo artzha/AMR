@@ -393,7 +393,7 @@ void ParticleFilter::Predict(const Vector2f& odom_loc, const float odom_angle) {
     // Sample from noise distributions (center at 0 by offsetting)
     float eps_x = CONFIG_k_x_ * rng_.Gaussian(0, sigma_x);
     float eps_y = CONFIG_k_y_ * rng_.Gaussian(0, sigma_y + 1e-3);
-    float eps_theta = CONFIG_k_theta_ * rng_.Gaussian(0, sigma_theta);
+    float eps_theta = CONFIG_k_theta_ * rng_.Gaussian(0, sigma_theta + 1e-3);
 
     // printf("eps_x: %.6f eps_y: %.6f eps_theta: %.6f\n", eps_x, eps_y, eps_theta);
     Eigen::Affine2f e =

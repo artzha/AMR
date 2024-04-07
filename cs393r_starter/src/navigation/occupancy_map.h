@@ -10,10 +10,10 @@
 #include "visualization/visualization.h"
 
 #define MAX_INT8 (int8_t)127
-#define MIN_INT8 (int8_t)(-128)
+#define MIN_INT8 (int8_t)(-32)
 
 #define LOG_ODDS_OCCUPIED 3
-#define LOG_ODDS_FREE -3
+#define LOG_ODDS_FREE -2
 
 namespace navigation {
 

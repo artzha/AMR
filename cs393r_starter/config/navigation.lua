@@ -31,7 +31,7 @@ NavigationParameters = {
     robotRadius = 0.4; -- max radius of robot when turning
     -- robot_radius    = 0.45; -- radius of robot length and width + obstacle margin
 
-    waypoints_coeff = 5; -- distance between waypoints = coeff * 1 / max_curvature
-    carrot_distance = 1.5; -- distance threshold to carrot before moving it
+    waypoints_coeff = 4; --  orig 5 distance between waypoints = coeff * 1 / max_curvature
+    carrot_distance = 2.0; -- orig 1.5 distance threshold to carrot before moving it
     goal_distance   = 0.1; -- distance threshold to goal before stopping
 }

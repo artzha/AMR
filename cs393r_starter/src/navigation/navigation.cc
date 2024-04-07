@@ -198,6 +198,9 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   }
 */
   // Update occupancy map with new point cloud (cloud, tT_laser_map)
+  if (!localization_initialized_)
+    return;
+ 
   Eigen::Affine2f T_laser_map =
       Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
 
@@ -211,7 +214,6 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
     visualization::ClearVisualizationMsg(occupancy_viz_msg_);
     occ_map_.visualization(occupancy_viz_msg_);
   }
-
   //last_updated_time = time;
 }
 

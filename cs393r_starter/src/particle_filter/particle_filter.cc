@@ -307,7 +307,9 @@ void ParticleFilter::ObserveLaser(const vector<float>& ranges,
   // 1. Predict the likelihood of each particle
   double max_log_likelihood = -std::numeric_limits<double>::infinity();
 #pragma omp parallel for
-  for (Particle& p : particles_) {
+//  for (Particle& p : particles_) {
+  for(size_t i = 0; i < particles_.size(); ++i) {
+    auto&p = particles_[i];
     this->Update(sub_ranges, range_min, range_max, angle_min, new_angle_max, &p);
     max_log_likelihood = max(max_log_likelihood, p.log_likelihood);
   }

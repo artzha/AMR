@@ -191,12 +191,12 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
   t_point_cloud_ = time;
   PruneCommandQueue();
 
-  static double last_updated_time = time;
-
+ // static double last_updated_time = time;
+/*
   if (time - last_updated_time < 0.2) {
     return;
   }
-
+*/
   // Update occupancy map with new point cloud (cloud, tT_laser_map)
   Eigen::Affine2f T_laser_map =
       Eigen::Translation2f(robot_loc_) * Eigen::Rotation2Df(robot_angle_);
@@ -212,7 +212,7 @@ void Navigation::ObservePointCloud(const vector<Vector2f>& cloud, double time) {
     occ_map_.visualization(occupancy_viz_msg_);
   }
 
-  last_updated_time = time;
+  //last_updated_time = time;
 }
 
 void Navigation::UpdateCommandHistory(const AckermannCurvatureDriveMsg& drive_msg) {

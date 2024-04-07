@@ -17,7 +17,7 @@ k_laser_loc=Vector2(0.2, 0.0);
 
 d_short = 1.0; -- 0.2
 d_long = 2.0;
-likelihood_sigma = 3.0;
+likelihood_sigma = 5.0;
 likelihood_gamma = 0.8;
 
 dist_threshold = 3.0; -- meters

@@ -11,7 +11,7 @@ NavigationParameters = {
     max_angular_deccel = 3.0;
     max_angular_speed = 1.0;
 
-    max_curvature = 1.0;
+    max_curvature = 1.5;
     max_path_length = 10.0;
     max_clearance = 1.0;
 
@@ -27,7 +27,7 @@ NavigationParameters = {
     obstacle_margin = 0.05;
     lidar_offset = 0.21;
 
-    resolution = 0.2; -- 0.5 meter of accuracy -> meters / cell
+    resolution = 0.15; -- 0.5 meter of accuracy -> meters / cell
     robotRadius = 0.4; -- max radius of robot when turning
     -- robot_radius    = 0.45; -- radius of robot length and width + obstacle margin
 
